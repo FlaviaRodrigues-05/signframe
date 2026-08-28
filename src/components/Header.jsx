@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useLang } from '../context/LangContext.jsx'
 
-export default function Header(){
+export default function Header() {
   const { lang, setLang } = useLang()
 
   return (
@@ -20,7 +20,6 @@ export default function Header(){
       <div className="nav-right">
         <div className="lang-toggle">
           <button className={lang === 'ASL' ? 'active' : ''} onClick={() => setLang('ASL')}>ASL</button>
-          <button className={lang === 'ISL' ? 'active' : ''} onClick={() => setLang('ISL')}>ISL</button>
         </div>
         <NavLink to="/login" className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }}>
           Sign up / Login

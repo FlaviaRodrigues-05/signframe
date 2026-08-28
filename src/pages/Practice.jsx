@@ -192,13 +192,17 @@ export default function Practice(){
                 : 'Word practice'}
             </span>
             <div className="letter-display">
-          <div className={'letter-glyph' + (mode === 'word' ? ' word-glyph' : '')}>
-  {mode === 'alphabet' ? (
-    <img src={activeLetter.mediaUrl} alt={activeLetter.label} className="sign-media" />
-  ) : (
-    displayGlyph
-  )}
-</div>
+              <div className={'letter-glyph' + (mode === 'word' ? ' word-glyph' : '')}>
+                {mode === 'alphabet' ? (
+                  <img src={activeLetter.mediaUrl} alt={activeLetter.label} className="sign-media" />
+                ) : (
+                  displayGlyph
+                )}
+              </div>
+              <div>
+                <div className="letter-name">{displayName}</div>
+                <div className="letter-lang-tag">{lang} · {mode === 'alphabet' ? 'fingerspelling' : 'vocabulary'}</div>
+              </div>
             </div>
             <p className="letter-desc">{displayDesc}</p>
             {mode === 'alphabet' && (
