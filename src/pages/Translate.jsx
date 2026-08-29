@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import HandSkeleton from '../components/HandSkeleton.jsx'
+import CameraView from '../components/CameraView.jsx'
 import { useLang } from '../context/LangContext.jsx'
 
 const HAND_EMOJI = ['🤟', '👋', '✋', '🖐️', '👌', '🤙', '✊', '☝️']
@@ -89,7 +89,7 @@ export default function Translate(){
           </div>
           <div className="vf-frame">
             <div className="grid-lines"></div>
-            <HandSkeleton />
+            <CameraView />
           </div>
           <div className="signback-status">{status}</div>
           <p className="signback-hint">Sign the highlighted word on camera, then confirm to move to the next one.</p>
