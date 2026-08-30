@@ -378,3 +378,61 @@ body.login-page .app-main{
 body.login-page .auth-page{
   padding-bottom: 80px;
 }
+
+.camera-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.camera-video{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+    transform:scaleX(-1);
+}
+
+.camera-message {
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+  padding: 30px;
+  box-sizing: border-box;
+}
+
+.camera-message h3 {
+  margin: 12px 0 8px;
+  font-family: var(--font-display);
+}
+
+.camera-message p {
+  max-width: 320px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.camera-icon {
+  width: 48px;
+  height: 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid var(--line);
+  border-radius: 50%;
+
+  font-family: var(--font-mono);
+  font-size: 20px;
+}

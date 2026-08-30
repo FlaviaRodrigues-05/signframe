@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import HandSkeleton from '../components/HandSkeleton.jsx'
+import CameraView from '../components/CameraView.jsx'
 import { DATA } from '../data/signData.js'
 import { useLang } from '../context/LangContext.jsx'
 
@@ -206,7 +206,7 @@ export default function Practice(){
             </div>
             <div className="vf-frame">
               <div className="grid-lines"></div>
-              <HandSkeleton />
+              <CameraView />
             </div>
             <div className="vf-caption">
               <span>Mirror the reference on the right</span>
