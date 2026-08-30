@@ -48,7 +48,7 @@ input,textarea{font-family:inherit;}
     box-shadow:var(--shadow-lg);
 }
 
-/* ---------- shared pieces ---------- */
+
 .diamond{color:var(--coral); font-size:11px; display:inline-block; transform:rotate(45deg);}
 .eyebrow{font-family:var(--font-mono); font-size:11.5px; color:var(--coral); text-transform:uppercase; letter-spacing:.12em; display:flex; align-items:center; gap:8px; margin-bottom:14px;}
 
@@ -314,4 +314,67 @@ footer{border-top:1.5px solid var(--line); padding-top:36px; margin-top:44px; di
   .nav-links{display:none;}
   .search-panel{width:280px; right:-30px;}
   .footer-grid{grid-template-columns:1fr 1fr; gap:24px;}
+}
+/* Align "Start learning" buttons across the 3 lesson cards */
+.modes .intro-card{
+  display: flex;
+  flex-direction: column;
+}
+.modes .intro-card p{
+  flex: 1;
+}
+.modes .intro-card .btn{
+  align-self: center;
+  margin-top: auto;
+}
+
+.app-shell{
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 40px);
+}
+.app-main{
+  flex: 1;
+}
+
+body.login-page{
+  padding: 0;
+}
+body.login-page #root{
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+body.login-page .app-shell{
+  min-height: 100vh;
+}
+body.login-page .auth-page{
+  padding: 140px 32px 60px;
+}
+body.login-page footer{
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: 32px;
+  padding-right: 32px;
+}
+
+.app-shell > header{
+  width: 100%;
+  box-sizing: border-box;
+}
+
+body.login-page .app-shell{
+  min-height: 0;
+  display: block;
+}
+body.login-page .app-main{
+  flex: none;
+}
+body.login-page .auth-page{
+  padding-bottom: 80px;
 }

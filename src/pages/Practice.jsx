@@ -14,6 +14,7 @@ export default function Practice(){
   const [toast, setToast] = useState(null) // {type, text}
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [activeLesson, setActiveLesson] = useState('select') // 'select' | 'words' | 'sentences'
   const searchRef = useRef(null)
   const toggleRef = useRef(null)
 
@@ -28,6 +29,7 @@ export default function Practice(){
     setScore(null)
     setToast(null)
     setQuery('')
+    setActiveLesson('select')
   }, [lang])
 
   // Close the search panel on outside click
@@ -150,13 +152,50 @@ export default function Practice(){
       </div>
 
       {!started ? (
-        <div className="intro-card bracket">
-          <span className="tl"></span><span className="tr"></span><span className="bl"></span><span className="br"></span>
-          <div className="eyebrow" style={{ justifyContent: 'center' }}><span className="diamond">◆</span>Lesson: alphabet</div>
-          <h2>Ready to learn the {lang} alphabet?</h2>
-          <p>We'll split the screen — your camera on the left, a manual for each letter on the right. Sign it correctly and we move you on automatically.</p>
-          <button className="btn btn-primary" onClick={startLearning}>Start learning</button>
-        </div>
+        activeLesson === 'select' ? (
+          <div className="modes">
+            {/* LESSON 1 · ALPHABET — untouched, original code, do not modify */}
+            <div className="intro-card bracket">
+              <span className="tl"></span><span className="tr"></span><span className="bl"></span><span className="br"></span>
+                            <div className="eyebrow" style={{ justifyContent: 'center' }}><span className="diamond">◆</span>Lesson 1 · Alphabet</div>
+              <h2>Ready to learn the {lang} alphabet?</h2>
+              <p>Learn the {lang} alphabet one sign at a time with guided camera practice.</p>
+              <button className="btn btn-primary" onClick={startLearning}>Start learning</button>
+            </div>
+
+            {/* LESSON 2 · WORDS */}
+            <div className="intro-card bracket">
+              <span className="tl"></span><span className="tr"></span><span className="bl"></span><span className="br"></span>
+              <div className="eyebrow" style={{ justifyContent: 'center' }}><span className="diamond">◆</span>Lesson 2 · Words</div>
+              <h2>Build your sign vocabulary</h2>
+              <p>Practice common everyday words and build your {lang} vocabulary one sign at a time.</p>
+              <button className="btn btn-primary" onClick={() => setActiveLesson('words')}>Start learning</button>
+            </div>
+
+            {/* LESSON 3 · SENTENCES */}
+            <div className="intro-card bracket">
+              <span className="tl"></span><span className="tr"></span><span className="bl"></span><span className="br"></span>
+              <div className="eyebrow" style={{ justifyContent: 'center' }}><span className="diamond">◆</span>Lesson 3 · Sentences</div>
+              <h2>Put signs together</h2>
+              <p>Practice simple sentences and learn how individual signs come together in conversation.</p>
+              <button className="btn btn-primary" onClick={() => setActiveLesson('sentences')}>Start learning</button>
+            </div>
+          </div>
+        ) : activeLesson === 'words' ? (
+          <div className="placeholder-page">
+            <div className="eyebrow" style={{ justifyContent: 'center' }}><span className="diamond">◆</span>Lesson 2 · Words</div>
+            <h1>Words lesson coming soon.</h1>
+            <p>We're preparing the next set of {lang} vocabulary for you.</p>
+            <button className="btn btn-ghost btn-sm" style={{ marginTop: '20px' }} onClick={() => setActiveLesson('select')}>← Back to lessons</button>
+          </div>
+        ) : (
+          <div className="placeholder-page">
+            <div className="eyebrow" style={{ justifyContent: 'center' }}><span className="diamond">◆</span>Lesson 3 · Sentences</div>
+            <h1>Sentence lessons coming soon.</h1>
+            <p>We're preparing interactive sentence practice for you.</p>
+            <button className="btn btn-ghost btn-sm" style={{ marginTop: '20px' }} onClick={() => setActiveLesson('select')}>← Back to lessons</button>
+          </div>
+        )
       ) : (
         <div className="split-view">
           <div className="viewfinder bracket">

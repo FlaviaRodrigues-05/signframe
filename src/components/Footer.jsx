@@ -32,9 +32,11 @@ export default function Footer(){
       </div>
 
       <div className="footer-bottom">
-        <div>© {new Date().getFullYear()} SIGNFRAME</div>
-        <div>Demo mockup — camera tracking and matching shown here are simulated, not live models.</div>
+                <div>© {new Date().getFullYear()} SIGNFRAME · Final Year Project</div>
+        <div>A final-year project focused on accessible sign language learning through interactive technology.</div>
       </div>
     </footer>
   )
 }
+
+
