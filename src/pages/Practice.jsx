@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import CameraView from '../components/CameraView.jsx'
 import { DATA } from '../data/signData.js'
 import { useLang } from '../context/LangContext.jsx'
-
+import HandTrackingCamera from '../components/HandTrackingCamera.jsx'
 export default function Practice(){
   const { lang } = useLang()
   const [started, setStarted] = useState(false)
@@ -206,7 +206,7 @@ export default function Practice(){
             </div>
             <div className="vf-frame">
               <div className="grid-lines"></div>
-              <CameraView />
+              <HandTrackingCamera />
             </div>
             <div className="vf-caption">
               <span>Mirror the reference on the right</span>
