@@ -1,9 +1,6 @@
 import { NavLink } from 'react-router-dom'
-import { useLang } from '../context/LangContext.jsx'
 
-export default function Header() {
-  const { lang, setLang } = useLang()
-
+export default function Header({ minimal = false }) {
   return (
     <header>
       <NavLink to="/" className="logo" style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -17,14 +14,16 @@ export default function Header() {
         <NavLink to="/live" className={({ isActive }) => isActive ? 'active' : ''}>Live interpreter</NavLink>
       </div>
 
-      <div className="nav-right">
-        <div className="lang-toggle">
-          <button className={lang === 'ASL' ? 'active' : ''} onClick={() => setLang('ASL')}>ASL</button>
+      {!minimal && (
+        <div className="nav-right">
+          <div className="lang-toggle">
+            <button className="active">ASL</button>
+          </div>
+          <NavLink to="/login" className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }}>
+            Sign up / Login
+          </NavLink>
         </div>
-        <NavLink to="/login" className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }}>
-          Sign up / Login
-        </NavLink>
-      </div>
+      )}
     </header>
   )
 }
