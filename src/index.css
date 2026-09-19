@@ -542,3 +542,610 @@ body.login-page .auth-page{
 
   word-break: break-word;
 }
+/* ============================================================
+   WORD LESSON
+============================================================ */
+
+.word-practice-page {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding-bottom: 50px;
+}
+
+
+/* ============================================================
+   WORD HEADER
+============================================================ */
+
+.lesson-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 30px;
+  margin-bottom: 28px;
+}
+
+.lesson-heading h1 {
+  margin: 8px 0 8px;
+  font-size: clamp(32px, 4vw, 52px);
+  line-height: 1;
+}
+
+.lesson-heading p {
+  margin: 0;
+  max-width: 650px;
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+
+.word-progress {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+
+/* ============================================================
+   REFERENCE + WORD INFO
+============================================================ */
+
+.word-learning-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+
+/* ============================================================
+   REFERENCE CARD
+============================================================ */
+
+.reference-card {
+  background: #f7f3fb;
+  border: 1px solid rgba(70, 53, 73, 0.12);
+  border-radius: 24px;
+  padding: 18px;
+  min-height: 430px;
+  box-shadow: 0 15px 35px rgba(54, 42, 60, 0.06);
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.video-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+
+/* ============================================================
+   SMALL WLASL VIDEO
+============================================================ */
+
+.reference-video-frame {
+  width: 100%;
+  height: 350px;
+  background: #151316;
+  border-radius: 18px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reference-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #151316;
+}
+
+.reference-caption {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+
+/* ============================================================
+   WORD INFORMATION CARD
+============================================================ */
+
+.word-info-card {
+  background: #ffffff;
+  border: 1px solid rgba(70, 53, 73, 0.12);
+  border-radius: 24px;
+  padding: 28px;
+  box-shadow: 0 15px 35px rgba(54, 42, 60, 0.06);
+
+  display: flex;
+  flex-direction: column;
+}
+
+.word-info-card .back-link {
+  align-self: flex-start;
+  margin-bottom: 28px;
+}
+
+.word-info-card .manual-mode-label {
+  margin-bottom: 20px;
+}
+
+
+/* ============================================================
+   WORD TITLE
+============================================================ */
+
+.word-title-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.word-icon {
+  width: 88px;
+  height: 88px;
+  border-radius: 20px;
+  background: #eee8fb;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 36px;
+}
+
+.word-title-row h2 {
+  margin: 0 0 7px;
+  font-size: 36px;
+  text-transform: capitalize;
+}
+
+.word-info-card .letter-desc {
+  margin-top: 28px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+
+/* ============================================================
+   TIP
+============================================================ */
+
+.word-tip {
+  margin-top: 22px;
+  padding: 14px 16px;
+
+  border-radius: 14px;
+  background: #f7f3fb;
+
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.word-tip span {
+  display: block;
+  margin-bottom: 5px;
+
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+
+
+/* ============================================================
+   WORD NAVIGATION
+============================================================ */
+
+.word-navigation {
+  margin-top: auto;
+  padding-top: 28px;
+
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.word-navigation button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+
+/* ============================================================
+   YOUR CAMERA CARD
+============================================================ */
+
+.practice-camera-card {
+  margin-top: 24px;
+
+  background: #ffffff;
+  border: 1px solid rgba(70, 53, 73, 0.12);
+  border-radius: 24px;
+
+  padding: 22px;
+
+  box-shadow: 0 15px 35px rgba(54, 42, 60, 0.06);
+}
+
+
+/* ============================================================
+   CAMERA HEADER
+============================================================ */
+
+.camera-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+
+  margin-bottom: 18px;
+}
+
+.camera-card-header h2 {
+  margin: 7px 0 0;
+  font-size: 25px;
+}
+
+.tracking-status {
+  padding: 7px 11px;
+
+  border-radius: 999px;
+
+  background: #f7f3fb;
+
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+}
+
+
+/* ============================================================
+   CAMERA FRAME
+============================================================ */
+
+.practice-camera-frame {
+  width: 100%;
+  height: 400px;
+
+  border-radius: 20px;
+  overflow: hidden;
+
+  background: #111;
+
+  position: relative;
+}
+
+.practice-camera-frame video,
+.practice-camera-frame canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+
+/* ============================================================
+   CAMERA CONTROLS
+============================================================ */
+
+.camera-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+
+  margin-top: 18px;
+}
+
+.camera-instruction {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  font-size: 13px;
+}
+
+.camera-instruction strong {
+  font-size: 17px;
+  text-transform: capitalize;
+}
+
+.camera-instruction span {
+  color: var(--ink-soft);
+}
+
+
+/* ============================================================
+   CHECK BUTTON
+============================================================ */
+
+.check-button {
+  min-width: 160px;
+}
+
+
+/* ============================================================
+   SCORE
+============================================================ */
+
+.score-area {
+  margin-top: 18px;
+  padding-top: 16px;
+
+  border-top: 1px solid rgba(70, 53, 73, 0.1);
+}
+
+.score-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 8px;
+
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.score-header strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+
+/* ============================================================
+   RESPONSIVE
+============================================================ */
+
+@media (max-width: 900px) {
+
+  .word-learning-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reference-video-frame {
+    height: 320px;
+  }
+
+  .practice-camera-frame {
+    height: 360px;
+  }
+
+}
+
+
+@media (max-width: 600px) {
+
+  .lesson-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .word-learning-grid {
+    gap: 16px;
+  }
+
+  .reference-card,
+  .word-info-card,
+  .practice-camera-card {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .reference-video-frame {
+    height: 260px;
+  }
+
+  .practice-camera-frame {
+    height: 300px;
+  }
+
+  .camera-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .check-button {
+    width: 100%;
+  }
+
+  .word-navigation {
+    flex-direction: column;
+  }
+
+  .word-navigation button {
+    width: 100%;
+  }
+
+}
+
+/* ============================================================
+   MERGED FIXES (round 2)
+   - hide the duplicate per-lesson heading (it repeats the
+     toolbar's own eyebrow/h1 and was clashing with it)
+   - style the alphabet A–Z quick-nav (previously unstyled,
+     so it rendered as raw browser buttons)
+   - make the word module's two boxes match in height, give
+     buttons breathing room so they stop "sticking" together,
+     and give the practice camera the same look as module 1's
+     viewfinder (gradient + grid-line background)
+   Nothing here touches markup or logic — CSS only.
+============================================================ */
+
+/* The per-lesson heading duplicates the persistent toolbar
+   heading above it (same eyebrow + title pattern), which is
+   what was reading as two clashing header lines. Hiding it
+   here matches the reference design, where only the toolbar
+   heading is shown once a lesson starts. */
+.lesson-heading{
+  display: none;
+}
+
+/* ---------- Alphabet A–Z quick-nav ---------- */
+.alphabet-line{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 22px;
+}
+.alphabet-letter{
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--card-soft);
+  border: 1.5px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+}
+.alphabet-letter:hover{
+  background: var(--lavender);
+  color: var(--lavender-ink);
+}
+.alphabet-letter.active{
+  background: var(--coral);
+  border-color: var(--coral);
+  color: #fff;
+  font-weight: 700;
+}
+
+.camera-label{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.manual-actions{
+  flex-wrap: wrap;
+}
+
+.video-unavailable{
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+/* ---------- Word module: equal-height boxes ---------- */
+.word-learning-grid{
+  align-items: stretch;
+}
+.practice-camera-card,
+.reference-card{
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px;
+}
+
+/* Give module 2's camera the same visual treatment as
+   module 1's viewfinder: soft gradient background + faint
+   grid-line overlay (added as a pseudo-element since this
+   frame has no dedicated grid-lines child in the markup). */
+.practice-camera-frame{
+  height: 400px;
+  border: 2px solid var(--line);
+  background:
+    radial-gradient(circle at 25% 15%, rgba(255,197,150,.5), transparent 50%),
+    radial-gradient(circle at 85% 85%, rgba(160,203,247,.5), transparent 55%),
+    linear-gradient(160deg,#F6F2FB,#EFE7F9);
+}
+.practice-camera-frame::before{
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: .10;
+  background-image:
+    linear-gradient(var(--ink) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ink) 1px, transparent 1px);
+  background-size: 30px 30px;
+  pointer-events: none;
+}
+.practice-camera-frame video,
+.practice-camera-frame canvas{
+  position: relative;
+  z-index: 1;
+}
+
+/* Match the reference video frame's height/radius to the
+   practice camera frame so both columns read as the same
+   size at a glance. */
+.reference-video-frame{
+  height: 400px;
+  border-radius: 20px;
+}
+
+/* Buttons and controls: always keep a gap and allow wrapping
+   so nothing sits flush against an edge or another element. */
+.camera-bottom-row{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+.check-button{
+  flex-shrink: 0;
+}
+.word-navigation{
+  flex-wrap: wrap;
+}
+
+/* The word info block now lives inside .reference-card as
+   .word-info-card-inner. Extend the existing word-info-card
+   rules to it and let it fill the remaining height so the
+   Previous/Next row lines up with the bottom of the camera
+   card on the left. */
+.word-info-card-inner{
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  margin-top: 20px;
+}
+.word-info-card-inner .back-link{
+  align-self: flex-start;
+  margin-bottom: 28px;
+}
+.word-info-card-inner .manual-mode-label{
+  margin-bottom: 20px;
+}
+.word-info-card-inner .letter-desc{
+  margin-top: 28px;
+}
+
+@media (max-width: 900px) {
+  .practice-camera-frame,
+  .reference-video-frame{
+    height: 320px;
+  }
+}
+@media (max-width: 600px) {
+  .practice-camera-frame,
+  .reference-video-frame{
+    height: 260px;
+  }
+}
