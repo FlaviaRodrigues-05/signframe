@@ -1,5 +1,11 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
+import { auth, googleProvider } from '../firebase' // adjust path to match your structure
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+} from 'firebase/auth'
 
 export default function Login(){
   const navigate = useNavigate()
@@ -29,6 +35,18 @@ export default function Login(){
     return Object.keys(next).length === 0
   }
 
+  function mapFirebaseError(code){
+    switch (code) {
+      case 'auth/email-already-in-use': return 'An account with this email already exists.'
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password': return 'Incorrect email or password.'
+      case 'auth/user-not-found': return 'No account found with this email.'
+      case 'auth/weak-password': return 'Password should be at least 6 characters.'
+      case 'auth/popup-closed-by-user': return 'Sign-in was cancelled.'
+      default: return 'Something went wrong. Please try again.'
+    }
+  }
+
   async function handleLogin(e){
     e.preventDefault()
     setFormError('')
@@ -36,19 +54,14 @@ export default function Login(){
 
     setLoading(true)
     try {
-      // TODO: backend integration — replace with your actual auth call, e.g.
-      // const res = await fetch('/api/auth/login', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, password })
-      // })
-      // if (!res.ok) throw new Error('Invalid email or password')
-      // const data = await res.json()
-
-      await new Promise((resolve) => setTimeout(resolve, 800)) // placeholder delay
+      if (mode === 'signin') {
+        await signInWithEmailAndPassword(auth, email, password)
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password)
+      }
       navigate('/')
     } catch (err) {
-      setFormError(err.message || 'Something went wrong. Please try again.')
+      setFormError(mapFirebaseError(err.code))
     } finally {
       setLoading(false)
     }
@@ -58,11 +71,10 @@ export default function Login(){
     setFormError('')
     setGoogleLoading(true)
     try {
-      // TODO: backend integration — hook up Google OAuth here, e.g.
-      // window.location.href = '/api/auth/google'
-      await new Promise((resolve) => setTimeout(resolve, 800)) // placeholder delay
+      await signInWithPopup(auth, googleProvider)
+      navigate('/')
     } catch (err) {
-      setFormError('Google sign-in failed. Please try again.')
+      setFormError(mapFirebaseError(err.code))
     } finally {
       setGoogleLoading(false)
     }
@@ -167,12 +179,12 @@ export default function Login(){
           disabled={googleLoading}
         >
           {googleLoading ? (
-  <>
-    <span className="spinner" style={{ borderTopColor: 'var(--ink)' }} /> Connecting…
-  </>
-) : (
-  'Continue with Google'
-)}
+            <>
+              <span className="spinner" style={{ borderTopColor: 'var(--ink)' }} /> Connecting…
+            </>
+          ) : (
+            'Continue with Google'
+          )}
         </button>
 
         <p className="auth-footer-note">
