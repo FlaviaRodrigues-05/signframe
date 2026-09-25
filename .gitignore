@@ -1,3 +1,8 @@
 node_modules/
 .venv/
 .env
+cnn_model_asl-alphabet_dataset/extracted_features
+*.keras
+GRU_for_signframe/cnn_extracted_features
+GRU_for_signframe/.ipynb_checkpoints
+cnn_model_asl-alphabet_dataset/.ipynb_checkpoints
