@@ -1,3 +1,8 @@
+const HF_BASE = "https://huggingface.co/datasets/chris0202/wlasl100-signframe/resolve/main";
+
+const hfVideo = (word, filename) =>
+  `${HF_BASE}/${encodeURIComponent(word)}/${filename}`;
+
 export const DATA = {
   ASL: {
     letters: [
@@ -31,249 +36,347 @@ export const DATA = {
 
   
     words: [
-  {
-    word: "book",
-    emoji: "📖",
-    hint: "Open your hands like the pages of a book.",
-    video: "/sign-videos/book.mp4"
-  },
+
   {
     word: "you",
     emoji: "👉",
     hint: "Point toward the person you are referring to.",
-    video: "/sign-videos/69547.mp4"
+    video: "/sign-videos/69547.mp4",
+    source: "local"
   },
   {
     word: "me",
     emoji: "🙋",
     hint: "Point toward yourself.",
-    video: "/sign-videos/35544.mp4"
+    video: "/sign-videos/35544.mp4",
+    source: "local"
   },
   {
     word: "please",
     emoji: "🙏",
     hint: "Make a flat hand and circle it on your chest.",
-    video: "/sign-videos/69434.mp4"
+    video: "/sign-videos/69434.mp4",
+    source: "local"
   },
   {
     word: "thank you",
     emoji: "🤲",
     hint: "Move your hand forward from your chin.",
-    video: "/sign-videos/69502.mp4"
+    video: "/sign-videos/69502.mp4",
+    source:"local"
   },
   {
     word: "eat",
     emoji: "🍽️",
     hint: "Bring your fingertips toward your mouth.",
-    video: "/sign-videos/69307.mp4"
+    video: "/sign-videos/69307.mp4",
+    source: "local"
   },
   {
     word: "more",
     emoji: "➕",
     hint: "Bring your hands together repeatedly.",
-    video: "/sign-videos/69401.mp4"
+    video: "/sign-videos/69401.mp4",
+    source: "local"
   },
   {
     word: "less",
     emoji: "➖",
     hint: "Show a smaller amount with your hands.",
-    video: "/sign-videos/69386.mp4"
+    video: "/sign-videos/69386.mp4",
+    source: "local"
   },
   {
     word: "want",
     emoji: "🙌",
     hint: "Pull your hands toward yourself.",
-    video: "/sign-videos/69524.mp4"
+    video: "/sign-videos/69524.mp4",
+    source: "local"
   },
   {
     word: "need",
     emoji: "❗",
     hint: "Show that something is necessary.",
-    video: "/sign-videos/37886.mp4"
+    video: "/sign-videos/37886.mp4",
+    source: "local"
   },
   {
     word: "good",
     emoji: "👍",
     hint: "Move your hand forward from your mouth.",
-    video: "/sign-videos/69347.mp4"
+    video: "/sign-videos/69347.mp4",
+    source: "local"
   },
   {
     word: "bad",
     emoji: "👎",
     hint: "Move your hand downward from your mouth.",
-    video: "/sign-videos/69219.mp4"
+    video: "/sign-videos/69219.mp4",
+    source: "local"
   },
   {
     word: "love",
     emoji: "❤️",
     hint: "Cross both hands over your chest.",
-    video: "/sign-videos/34123.mp4"
+    video: "/sign-videos/34123.mp4",
+    source: "local"
   },
   {
     word: "like",
     emoji: "❤️",
     hint: "Show that you like something.",
-    video: "/sign-videos/69389.mp4"
+    video: "/sign-videos/69389.mp4",
+    source: "local"
   },
   {
     word: "have",
     emoji: "🤲",
     hint: "Hold your hands as if you have something.",
-    video: "/sign-videos/69360.mp4"
+    video: "/sign-videos/69360.mp4",
+    source: "local"
   },
   {
     word: "sorry",
     emoji: "✊",
     hint: "Make a fist and circle it on your chest.",
-    video: "/sign-videos/53371.mp4"
+    video: "/sign-videos/53371.mp4",
+    source: "local"
   },
   {
     word: "hello",
     emoji: "👋",
     hint: "Wave your hand to greet someone.",
-    video: "/sign-videos/27184.mp4"
+    video: "/sign-videos/27184.mp4",
+    source: "local"
   },
   {
     word: "goodbye",
     emoji: "👋",
     hint: "Wave your hand goodbye.",
-    video: "/sign-videos/25044.mp4"
+    video: "/sign-videos/25044.mp4",
+    source: "local"
   },
   {
     word: "what",
     emoji: "❓",
     hint: "Use the sign for asking what.",
-    video: "/sign-videos/69531.mp4"
+    video: "/sign-videos/69531.mp4",
+    source: "local"
   },
   {
     word: "where",
     emoji: "📍",
     hint: "Use the sign for asking where.",
-    video: "/sign-videos/63087.mp4"
+    video: "/sign-videos/63087.mp4",
+    source: "local"
   },
   
   {
         word: "book",
         emoji: "📖",
         videoUrl: "/sign-videos/book.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "drink",
         emoji: "🥤",
         videoUrl: "/sign-videos/drink.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "computer",
         emoji: "💻",
         videoUrl: "/sign-videos/computer.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "before",
         emoji: "⏮️",
         videoUrl: "/sign-videos/before.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "chair",
         emoji: "🪑",
         videoUrl: "/sign-videos/chair.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "go",
         emoji: "➡️",
         videoUrl: "/sign-videos/go.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "clothes",
         emoji: "👕",
         videoUrl: "/sign-videos/clothes.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "who",
         emoji: "❓",
         videoUrl: "/sign-videos/who.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "candy",
         emoji: "🍬",
         videoUrl: "/sign-videos/candy.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "cousin",
         emoji: "👥",
         videoUrl: "/sign-videos/cousin.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "deaf",
         emoji: "🤟",
         videoUrl: "/sign-videos/deaf.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "fine",
         emoji: "👌",
         videoUrl: "/sign-videos/fine.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "help",
         emoji: "🆘",
         videoUrl: "/sign-videos/help.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "no",
         emoji: "✋",
         videoUrl: "/sign-videos/no.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "thin",
         emoji: "🫱",
         videoUrl: "/sign-videos/thin.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "walk",
         emoji: "🚶",
         videoUrl: "/sign-videos/walk.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "year",
         emoji: "📅",
         videoUrl: "/sign-videos/year.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "yes",
         emoji: "👍",
         videoUrl: "/sign-videos/yes.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "all",
         emoji: "🌎",
         videoUrl: "/sign-videos/all.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       },
       {
         word: "black",
         emoji: "⚫",
         videoUrl: "/sign-videos/black.mp4",
+      source: "local",
         hint: "Practice the sign shown in the reference video."
       }
-    ]
+    ],
+ 
+
+  sentences: [
+  {
+    text: "I need help",
+    words: ["I", "need", "help"]
   },
+  {
+    text: "I want to eat",
+    words: ["I", "want", "to", "eat"]
+  },
+  {
+    text: "Please help me",
+    words: ["please", "help", "me"]
+  },
+  {
+    text: "Where are you?",
+    words: ["where", "are", "you"]
+  },
+  {
+    text: "What do you want?",
+    words: ["what", "do", "you", "want"]
+  },
+  {
+    text: "I want to go",
+    words: ["I", "want", "to", "go"]
+  },
+  {
+    text: "I like this book",
+    words: ["I", "like", "this", "book"]
+  },
+  {
+    text: "Thank you",
+    words: ["thank", "you"]
+  },
+  {
+    text: "Hello, how are you?",
+    words: ["hello", "how", "are", "you"]
+  },
+  {
+    text: "I need a computer",
+    words: ["I", "need", "a", "computer"]
+  },
+  {
+    text: "I drink",
+    words: ["I", "drink"]
+  },
+  {
+    text: "Go before me",
+    words: ["go", "before", "me"]
+  },
+  {
+    text: "Black clothes",
+    words: ["black", "clothes"]
+  },
+  {
+    text: "Play basketball",
+    words: ["play", "basketball"]
+  },
+  {
+    text: "Eat candy",
+    words: ["eat", "candy"]
+  }
+]
+},
 
   ISL: {
     letters: [],

@@ -1666,3 +1666,229 @@ body.login-page .auth-page{
     font-size:30px;
   }
 }
+/* ============================================================
+   SENTENCE SELECTION
+   ============================================================ */
+
+.sentence-selection-page {
+  width: 100%;
+  padding-bottom: 60px;
+}
+
+.sentence-selection-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin: 42px 0 24px;
+}
+
+.sentence-selection-header h2 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.sentence-selection-header p {
+  margin: 7px 0 0;
+  opacity: 0.65;
+}
+
+.sentence-count {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--card-color, #e5ded0);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+
+/* ============================================================
+   SENTENCE GRID
+   ============================================================ */
+
+.sentence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+
+/* ============================================================
+   SENTENCE CARD
+   ============================================================ */
+
+.sentence-card {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+
+  width: 100%;
+  min-height: 145px;
+
+  padding: 24px;
+
+  border: none;
+  border-radius: 20px;
+
+  background: var(--card-color, #e5ded0);
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.sentence-card:hover {
+  transform: translateY(-4px);
+
+  box-shadow:
+    0 12px 28px rgba(60, 45, 25, 0.12);
+}
+
+.sentence-card:active {
+  transform: translateY(-1px);
+}
+
+
+/* ============================================================
+   ICON
+   ============================================================ */
+
+.sentence-card-icon {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  width: 62px;
+  height: 62px;
+
+  flex-shrink: 0;
+
+  margin-right: 20px;
+
+  border-radius: 18px;
+
+  background: #fff8e6;
+
+  font-size: 28px;
+}
+
+
+/* ============================================================
+   CONTENT
+   ============================================================ */
+
+.sentence-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.sentence-card-content h3 {
+  margin: 0 0 15px;
+
+  font-size: 21px;
+  line-height: 1.25;
+
+  font-weight: 700;
+}
+
+.sentence-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  opacity: 0.62;
+}
+
+.sentence-arrow {
+  font-size: 21px;
+  opacity: 0.8;
+}
+
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+
+.empty-sentences {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 260px;
+
+  margin-top: 25px;
+  padding: 40px;
+
+  text-align: center;
+
+  background: var(--card-color, #e5ded0);
+  border-radius: 20px;
+}
+
+.empty-icon {
+  font-size: 42px;
+  margin-bottom: 15px;
+}
+
+.empty-sentences h3 {
+  margin: 0 0 8px;
+}
+
+.empty-sentences p {
+  max-width: 420px;
+  margin: 0;
+
+  opacity: 0.65;
+  line-height: 1.6;
+}
+
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 800px) {
+
+  .sentence-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sentence-selection-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+}
+
+@media (max-width: 500px) {
+
+  .sentence-card {
+    min-height: 125px;
+    padding: 18px;
+  }
+
+  .sentence-card-icon {
+    width: 52px;
+    height: 52px;
+
+    margin-right: 15px;
+
+    font-size: 23px;
+  }
+
+  .sentence-card-content h3 {
+    font-size: 18px;
+  }
+
+}
