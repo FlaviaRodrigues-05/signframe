@@ -324,142 +324,110 @@ def get_wlasl_words():
 # WLASL VIDEO PROXY
 # ============================================================
 
-@app.route(
-    "/wlasl/<path:video_path>",
-    methods=["GET"]
-)
+@app.route("/wlasl/<path:video_path>", methods=["GET"])
 def wlasl_video(video_path):
 
     if ".." in video_path:
-
         return jsonify({
             "error": "Invalid video path"
         }), 400
 
-
     if not video_path.lower().endswith(".mp4"):
-
         return jsonify({
             "error": "Complete MP4 path required"
         }), 400
 
-
-    hf_url = (
-        f"{HF_RESOLVE}/{video_path}"
-    )
-
+    hf_url = f"{HF_RESOLVE}/{video_path}"
 
     print()
-    print(
-        "Fetching WLASL video:"
-    )
+    print("====================================")
+    print("Fetching WLASL video:")
     print(hf_url)
-    print()
-
+    print("====================================")
 
     try:
 
+        # Forward browser Range request to Hugging Face
         headers = {}
 
-
-        # Forward browser range request
         if request.headers.get("Range"):
-
-            headers["Range"] = (
-                request.headers["Range"]
-            )
-
+            headers["Range"] = request.headers["Range"]
 
         response = requests.get(
             hf_url,
+            headers=headers,
             stream=True,
             timeout=60,
-            headers=headers
+            allow_redirects=True
         )
 
+        print(
+            "Hugging Face status:",
+            response.status_code
+        )
 
-        if response.status_code not in (
-            200,
-            206
-        ):
+        print(
+            "Hugging Face content type:",
+            response.headers.get("Content-Type")
+        )
 
+        if response.status_code not in (200, 206):
             return jsonify({
-
-                "error":
-                    "Could not fetch WLASL video",
-
-                "status":
-                    response.status_code
-
+                "error": "Hugging Face video not found",
+                "status": response.status_code,
+                "url": hf_url
             }), response.status_code
 
+        def generate():
 
-        content_type = (
-            response.headers.get(
-                "Content-Type",
-                "video/mp4"
-            )
-        )
+            try:
 
+                for chunk in response.iter_content(
+                    chunk_size=1024 * 1024
+                ):
+
+                    if chunk:
+                        yield chunk
+
+            finally:
+
+                response.close()
 
         response_headers = {
-
-            "Content-Type":
-                content_type,
-
-            "Accept-Ranges":
-                "bytes"
-
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=3600"
         }
 
+        # Forward important video headers
+        for header in [
+            "Content-Length",
+            "Content-Range",
+            "Content-Type",
+            "ETag",
+            "Last-Modified"
+        ]:
 
-        if response.headers.get(
-            "Content-Length"
-        ):
+            value = response.headers.get(header)
 
-            response_headers[
-                "Content-Length"
-            ] = response.headers[
-                "Content-Length"
-            ]
-
-
-        if response.headers.get(
-            "Content-Range"
-        ):
-
-            response_headers[
-                "Content-Range"
-            ] = response.headers[
-                "Content-Range"
-            ]
-
+            if value:
+                response_headers[header] = value
 
         return Response(
-            response.iter_content(
-                chunk_size=1024 * 64
-            ),
+            generate(),
             status=response.status_code,
             headers=response_headers
         )
 
-
     except requests.RequestException as error:
 
         print(
-            "WLASL video error:",
+            "Hugging Face video error:",
             error
         )
 
-
         return jsonify({
-
-            "error":
-                "Could not fetch WLASL video",
-
-            "details":
-                str(error)
-
+            "error": "Could not connect to Hugging Face",
+            "details": str(error)
         }), 502
 # ============================================================
 # PREDICT
