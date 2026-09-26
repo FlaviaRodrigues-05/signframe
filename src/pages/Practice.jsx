@@ -41,7 +41,7 @@ export default function Practice() {
   const searchRef = useRef(null)
   const toggleRef = useRef(null)
 
-  const BACKEND_URL = 'http://localhost:5001'
+  const BACKEND_URL = 'https://signframe.onrender.com'
 
 
   const words = useMemo(() => {
@@ -283,13 +283,14 @@ export default function Practice() {
     )
   }
 
-  if (
+ if (
     activeWord.source === 'wlasl' &&
     activeWord.folder &&
     activeWord.file
   ) {
     return (
-      `${BACKEND_URL}/wlasl/` +
+      'https://huggingface.co/datasets/' +
+      'chris0202/wlasl100-signframe/resolve/main/' +
       `${encodeURIComponent(activeWord.folder)}/` +
       `${encodeURIComponent(activeWord.file)}`
     )
