@@ -7,28 +7,48 @@ export default function Practice() {
 
   const { lang } = useLang()
 
-  // Language data
+ 
   const languageData = DATA[lang] || DATA.ASL
 
   const letters = languageData?.letters || []
   const rawWords = languageData?.words || []
   const sentences = languageData?.sentences || []
 
-  // WLASL words loaded from Flask
+ 
   const [wlaslWords, setWlaslWords] = useState([])
 
-  /*
-   * LOCAL WORDS COME FIRST.
-   *
-   * If a word exists locally, we use the local video.
-   * WLASL is only used for words that do not already
-   * exist in the local SignFrame data.
-   */
+  
+
+  const [selected, setSelected] = useState(0)
+  const [started, setStarted] = useState(false)
+  const [mode, setMode] = useState('alphabet')
+  const [activeLesson, setActiveLesson] = useState('select')
+
+  const [letterIndex, setLetterIndex] = useState(0)
+  const [wordIndex, setWordIndex] = useState(0)
+  const [currentWord, setCurrentWord] = useState(null)
+
+  const [sentenceIndex, setSentenceIndex] = useState(0)
+  const [sentenceWordIndex, setSentenceWordIndex] = useState(0)
+  const [sentencePlaying, setSentencePlaying] = useState(false)
+  const [score, setScore] = useState(null)
+  const [checking, setChecking] = useState(false)
+  const [toast, setToast] = useState(null)
+
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [query, setQuery] = useState('')
+
+  const searchRef = useRef(null)
+  const toggleRef = useRef(null)
+
+  const BACKEND_URL = 'http://localhost:5001'
+
+
   const words = useMemo(() => {
 
     const localMap = new Map()
 
-    // Add ALL local words first
+   
     rawWords.forEach(item => {
 
       const key = item.word?.toLowerCase().trim()
@@ -44,7 +64,8 @@ export default function Practice() {
 
     })
 
-    // Add WLASL only when local version doesn't exist
+  
+   
     wlaslWords.forEach(item => {
 
       const key = item.word?.toLowerCase().trim()
@@ -64,97 +85,146 @@ export default function Practice() {
 
   }, [rawWords, wlaslWords])
 
-  const playableSentences = useMemo(() => {
-
-  if (!sentences.length || !words.length) {
-    return []
+  // Some sentence words use a different label from the sign
+  // that already exists in SignFrame's local data.
+  // Example: "I" uses the existing "me" sign/video.
+  const SENTENCE_WORD_ALIASES = {
+    i: 'me'
   }
 
-  const wordMap = new Map()
+  // These words stay visible in the sentence, but they do not
+  // get their own reference-video step.
+  const SENTENCE_VIDEO_SKIP_WORDS = new Set([
+    'to',
+    'do',
+    'are'
+  ])
 
-  words.forEach(word => {
+  const normalizeSentenceWord = value => {
+    return String(value ?? '')
+      .toLowerCase()
+      .trim()
+      .replace(/[.,!?;:"'()[\]{}]/g, '')
+  }
 
-    const key = word.word?.toLowerCase().trim()
-
-    if (key && !wordMap.has(key)) {
-      wordMap.set(key, word)
+  const getSentenceVideoSource = word => {
+    if (!word) {
+      return null
     }
 
-  })
+    // Local SignFrame video
+    if (word.videoUrl) {
+      return word.videoUrl
+    }
 
-  return sentences
-    .map(sentence => {
+    if (word.video) {
+      return word.video
+    }
 
-      const resolvedWords = (sentence.words || [])
-        .map(word => {
-          return wordMap.get(
-            word.toLowerCase().trim()
-          )
-        })
-        .filter(Boolean)
+    if (word.videoPath) {
+      return word.videoPath
+    }
+
+    // WLASL video through Flask
+    if (
+      word.source === 'wlasl' &&
+      word.folder &&
+      word.file
+    ) {
+      return (
+        `${BACKEND_URL}/wlasl/` +
+        `${encodeURIComponent(word.folder)}/` +
+        `${encodeURIComponent(word.file)}`
+      )
+    }
+
+    return null
+  }
+
+  const playableSentences = useMemo(() => {
+    if (!sentences.length) {
+      return []
+    }
+
+    const wordMap = new Map()
+
+    words.forEach(word => {
+      const key = normalizeSentenceWord(word.word)
+
+      if (key && !wordMap.has(key)) {
+        wordMap.set(key, word)
+      }
+    })
+
+    return sentences.map(sentence => {
+      const sentenceWords = Array.isArray(sentence.words)
+        ? sentence.words
+        : String(sentence.text || '')
+            .split(/\s+/)
+            .filter(Boolean)
+
+      // IMPORTANT:
+      // resolvedWords contains EVERY word from the original sentence.
+      // We never remove "to", "do", "are", punctuation, or any other
+      // word from the sentence display.
+      const resolvedWords = sentenceWords.map(word => {
+        const displayWord = String(word)
+        const key = normalizeSentenceWord(displayWord)
+
+        const lookupKey =
+          SENTENCE_WORD_ALIASES[key] || key
+
+        const matchedWord = wordMap.get(lookupKey)
+
+        const skipVideo =
+          SENTENCE_VIDEO_SKIP_WORDS.has(key)
+
+        const videoSrc = skipVideo
+          ? null
+          : getSentenceVideoSource(matchedWord)
+
+        return {
+          ...(matchedWord || {}),
+          word: displayWord,
+          resolvedFrom: matchedWord ? lookupKey : null,
+          skipVideo,
+          sentenceVideo: videoSrc,
+          hasVideo: Boolean(videoSrc)
+        }
+      })
+
+      // This is ONLY the playback sequence.
+      // The original sentence words above are untouched.
+      const videoWords = resolvedWords
+        .filter(word => !word.skipVideo && word.hasVideo)
+        .map((word, videoIndex) => ({
+          ...word,
+          videoIndex
+        }))
 
       return {
         ...sentence,
-        resolvedWords
+        words: sentenceWords,
+        resolvedWords,
+        videoWords
       }
-
     })
-    .filter(sentence => {
-
-      return (
-        sentence.resolvedWords.length ===
-        sentence.words.length
-      )
-
-    })
-
-}, [sentences, words])
-
-
-  const [selected, setSelected] = useState(0)
-  const [started, setStarted] = useState(false)
-  const [mode, setMode] = useState('alphabet')
-  const [activeLesson, setActiveLesson] = useState('select')
-
-  const [letterIndex, setLetterIndex] = useState(0)
-  const [wordIndex, setWordIndex] = useState(0)
-  const [currentWord, setCurrentWord] = useState(null)
-
-  const [score, setScore] = useState(null)
-  const [checking, setChecking] = useState(false)
-  const [toast, setToast] = useState(null)
-
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [query, setQuery] = useState('')
-
-  const searchRef = useRef(null)
-  const toggleRef = useRef(null)
-
-  // Ref to the currently mounted HandTrackingCamera instance so we can
-  // pull a raw still frame from it for the alphabet check.
-  const cameraRef = useRef(null)
+  }, [sentences, words])
 
   const activeLetter = letters[letterIndex]
   const activeWord = currentWord || words[wordIndex]
- 
-  /*
-   * Flask backend.
-   *
-   * Local videos DO NOT use this.
-   *
-   * WLASL videos DO use this.
-   *
-   * The alphabet check (/predict-sign) also uses this.
-   */
-  const BACKEND_URL = 'http://localhost:5001'
+  const activeSentence = playableSentences[sentenceIndex]
+
+  // sentenceWordIndex refers to the PLAYABLE VIDEO sequence,
+  // not the original sentence-word array.
+  const activeSentenceWord =
+    activeSentence?.videoWords?.[sentenceWordIndex] || null
+
+  const sentenceVideoSrc =
+    activeSentenceWord?.sentenceVideo || null
 
 
-  /*
-   * LOAD WLASL WORDS
-   *
-   * Flask gets the word list from Hugging Face.
-   * The actual videos are NOT stored locally.
-   */
+
   useEffect(() => {
 
     const loadWLASLWords = async () => {
@@ -201,21 +271,9 @@ export default function Practice() {
   }, [])
 
 
-  /*
-   * VIDEO URL
-   *
-   * LOCAL:
-   * /sign-videos/example.mp4
-   *
-   * WLASL:
-   * http://localhost:5001/wlasl/folder/file.mp4
-   */
  const videoSrc = (() => {
   if (!activeWord) return null
 
-  // ==========================================
-  // LOCAL SIGNFRAME VIDEO
-  // ==========================================
   if (activeWord.source === 'local') {
     return (
       activeWord.videoUrl ||
@@ -225,25 +283,19 @@ export default function Practice() {
     )
   }
 
-  // ==========================================
-  // WLASL / HUGGING FACE VIDEO
-  // ==========================================
   if (
     activeWord.source === 'wlasl' &&
     activeWord.folder &&
     activeWord.file
   ) {
     return (
-      `https://huggingface.co/datasets/` +
-      `chris0202/wlasl100-signframe/resolve/main/` +
+      `${BACKEND_URL}/wlasl/` +
       `${encodeURIComponent(activeWord.folder)}/` +
       `${encodeURIComponent(activeWord.file)}`
     )
   }
 
-  // ==========================================
-  // FALLBACK
-  // ==========================================
+  
   return (
     activeWord.videoUrl ||
     activeWord.video ||
@@ -259,6 +311,9 @@ export default function Practice() {
 
     setLetterIndex(0)
     setWordIndex(0)
+    setSentenceIndex(0)
+    setSentenceWordIndex(0)
+    setSentencePlaying(false)
 
     setCurrentWord(null)
 
@@ -272,9 +327,6 @@ export default function Practice() {
   }, [lang])
 
 
-  /*
-   * CLOSE SEARCH WHEN CLICKING OUTSIDE
-   */
   useEffect(() => {
 
     const handleOutsideClick = event => {
@@ -309,9 +361,7 @@ export default function Practice() {
   }, [searchOpen])
 
 
-  /*
-   * RESET PRACTICE STATE
-   */
+ 
   function resetPracticeState() {
 
     setScore(null)
@@ -321,9 +371,7 @@ export default function Practice() {
   }
 
 
-  /*
-   * START ALPHABET
-   */
+  
   function startAlphabet() {
 
     setStarted(true)
@@ -377,6 +425,9 @@ export default function Practice() {
 
     setLetterIndex(0)
     setWordIndex(0)
+    setSentenceIndex(0)
+    setSentenceWordIndex(0)
+    setSentencePlaying(false)
 
     resetPracticeState()
 
@@ -440,6 +491,25 @@ export default function Practice() {
 
   }
 
+  function startSentence(sentenceIndexToStart = 0) {
+  if (!playableSentences.length) {
+    setToast({
+      type: 'bad',
+      text: 'No sentences are available yet.'
+    })
+    return
+  }
+
+  setSentenceIndex(sentenceIndexToStart)
+  setSentenceWordIndex(0)
+  setSentencePlaying(false)
+
+  setStarted(true)
+  setMode('sentence')
+  setActiveLesson('sentences')
+
+  resetPracticeState()
+}
 
   /*
    * PREVIOUS WORD
@@ -492,13 +562,8 @@ export default function Practice() {
   /*
    * CHECK SIGN
    *
-   * Alphabet mode: captures a raw frame from the camera and sends it to
-   * the Flask /predict-sign endpoint, which runs it through the trained
-   * MobileNetV2 + dense classifier and returns a real prediction.
-   *
-   * Word/sentence mode: WLASL is a video/temporal model (not a single
-   * frame classifier), so this still uses the placeholder scoring until
-   * a dedicated model is wired up.
+   * This is still the existing temporary scoring
+   * logic from your Practice page.
    */
   
   async function checkSign() {
@@ -669,6 +734,7 @@ export default function Practice() {
 
     <div className="practice-page">
 
+      
       {/* =========================================
           TOOLBAR
       ========================================== */}
@@ -804,7 +870,7 @@ export default function Practice() {
 
       {!started &&
         activeLesson === 'select' && (
-          <>
+
           <div className="modes">
 
             {/* ALPHABET */}
@@ -918,189 +984,378 @@ export default function Practice() {
 
           </div>
 
-          {/* LEARNING PROGRESS — UI only, static values for now */}
-          <div
-            className="practice-progress bracket"
-            style={{
-              marginTop: '24px',
-              padding: '24px 28px'
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-end',
-                gap: '20px',
-                marginBottom: '14px'
-              }}
-            >
-              <div>
-                <div
-                  className="eyebrow"
-                  style={{ marginBottom: '6px' }}
-                >
-                  Your Learning Progress
-                </div>
-
-                <div
-                  style={{
-                    fontSize: '14px',
-                    color: 'var(--ink-soft)'
-                  }}
-                >
-                  0 of 3 lessons completed
-                </div>
-              </div>
-
-              <strong
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '18px'
-                }}
-              >
-                0%
-              </strong>
-            </div>
-
-            <div
-              style={{
-                width: '100%',
-                height: '8px',
-                borderRadius: '999px',
-                background: 'var(--line)',
-                overflow: 'hidden'
-              }}
-            >
-              <div
-                style={{
-                  width: '0%',
-                  height: '100%'
-                }}
-              />
-            </div>
-          </div>
-          </>
         )}
 
+{/* =========================================
+    SENTENCE SELECTION
+========================================== */}
 
-      {/* =========================================
-          SENTENCES
-      ========================================== */}
+{!started &&
+  activeLesson === 'sentences' && (
 
-     {!started && activeLesson === 'sentences' && (
-  <section className="sentence-selection-page">
+    <section className="sentences-selection-page">
 
-    <div className="lesson-heading">
+      <div className="lesson-heading">
 
-      <div>
-        <div className="eyebrow">
-          <span className="diamond">◆</span>
-          Lesson 3 · Sentences
+        <div className="lesson-heading-copy">
+
+          <button
+            type="button"
+            className="back-link sentence-back"
+            onClick={backToLessons}
+          >
+            ← Back to lessons
+          </button>
+
+          <div className="eyebrow">
+            <span className="diamond">◆</span>
+            LESSON 3 · SENTENCES
+          </div>
+
+          <h1>Practice sentences</h1>
+
+          <p>
+            Choose a sentence and practise each sign
+            step by step.
+          </p>
+
         </div>
 
-        <h1>Build complete sentences</h1>
+        <div className="sentence-count-badge">
+          <strong>{playableSentences.length}</strong>
+          <span>
+            {playableSentences.length === 1
+              ? 'sentence'
+              : 'sentences'}
+          </span>
+        </div>
 
-        <p>
-          Practice individual signs together and learn
-          how they form a complete sentence.
-        </p>
       </div>
 
-    </div>
+      {playableSentences.length === 0 ? (
 
+        <div className="intro-card bracket sentence-empty">
+          <div className="eyebrow centered">SENTENCES</div>
+          <h2>No sentences found</h2>
+          <p>
+            No sentence data is available for this language.
+          </p>
+        </div>
 
-    <div className="sentence-selection-header">
+      ) : (
 
-      <div>
-        <h2>Choose a sentence</h2>
+        <div className="sentence-grid">
 
-        <p>
-          Select a sentence to start practicing.
-        </p>
-      </div>
+          {playableSentences.map((sentence, index) => (
 
-      <div className="sentence-count">
-        {playableSentences.length} sentences
-      </div>
+            <button
+              key={`${sentence.text}-${index}`}
+              type="button"
+              className="sentence-card bracket"
+              onClick={() => startSentence(index)}
+            >
 
-    </div>
+              <div className="sentence-card-top">
 
+                <span className="sentence-number">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
 
-    <div className="sentence-grid">
+                <span className="sentence-label">
+                  SENTENCE
+                </span>
 
-      {playableSentences.map((sentence, index) => (
+                <span className="sentence-card-arrow">
+                  →
+                </span>
+
+              </div>
+
+              <div className="sentence-card-content">
+
+                <div className="sentence-card-icon">
+                  💬
+                </div>
+
+                <div className="sentence-card-info">
+
+                  <h2>{sentence.text}</h2>
+
+                  <div className="sentence-mini-words">
+
+                    {(sentence.resolvedWords || [])
+                      .map((word, wordIndex) => (
+
+                        <span
+                          key={`${word.word}-${wordIndex}`}
+                          className={
+                            word.skipVideo
+                              ? 'sentence-mini-word skipped-video-word'
+                              : 'sentence-mini-word'
+                          }
+                        >
+                          {word.word}
+                        </span>
+
+                      ))}
+
+                  </div>
+
+                  <p>
+                    {(sentence.resolvedWords || []).length}
+                    {' '}
+                    {(sentence.resolvedWords || []).length === 1
+                      ? 'word'
+                      : 'words'}
+                  </p>
+
+                </div>
+
+              </div>
+
+            </button>
+
+          ))}
+
+        </div>
+
+      )}
+
+    </section>
+
+)}
+{started &&
+  mode === 'sentence' &&
+  activeSentence && (
+
+    <section className="sentence-practice-page">
+
+      {/* HEADER */}
+
+      <div className="sentence-practice-header">
 
         <button
-          key={`${sentence.text}-${index}`}
-          className="sentence-card bracket"
+          className="back-button"
           onClick={() => {
-
-            setSentenceIndex(index)
-            setSentenceWordIndex(0)
-            setSentencePlaying(false)
-
-            setStarted(true)
+            setStarted(false)
             setMode('sentence')
             setActiveLesson('sentences')
-
-            resetPracticeState()
+            setSentencePlaying(false)
           }}
         >
+          ← Back to sentences
+        </button>
 
-          <div className="sentence-card-icon">
-            💬
-          </div>
+        <div className="eyebrow">
+          SENTENCE PRACTICE
+        </div>
+
+        <h1>
+          {activeSentence.text}
+        </h1>
+
+        <p>
+          Practice each sign in the sentence.
+        </p>
+
+      </div>
 
 
-          <div className="sentence-card-content">
+      {/* ALL SENTENCE WORDS */}
 
-            <h3>
-              {sentence.text}
-            </h3>
+      <div className="sentence-word-list">
 
-            <div className="sentence-card-meta">
+        {(activeSentence.resolvedWords || []).map(
+          (word, originalIndex) => {
 
-              <span>
-                {sentence.resolvedWords.length} signs
-              </span>
+            const videoIndex =
+              typeof word.videoIndex === 'number'
+                ? word.videoIndex
+                : -1
 
-              <span className="sentence-arrow">
-                →
-              </span>
+            const isPlayable =
+              !word.skipVideo &&
+              word.hasVideo &&
+              videoIndex >= 0
 
+            const isActive =
+              isPlayable &&
+              videoIndex === sentenceWordIndex
+
+            return (
+              <button
+                key={`${word.word}-${originalIndex}`}
+                type="button"
+                className={`sentence-word ${
+                  isActive ? 'active' : ''
+                } ${
+                  word.skipVideo
+                    ? 'skipped-video-word'
+                    : ''
+                }`}
+                disabled={!isPlayable}
+                onClick={() => {
+                  if (!isPlayable) {
+                    return
+                  }
+
+                  setSentenceWordIndex(videoIndex)
+                  setSentencePlaying(false)
+                }}
+              >
+                {word.word}
+              </button>
+            )
+          }
+        )}
+
+      </div>
+
+
+      {/* REFERENCE VIDEO */}
+
+      <div className="sentence-reference-card">
+
+        <div className="reference-label">
+          REFERENCE SIGN
+        </div>
+
+        <div className="sentence-video-container">
+
+          {sentenceVideoSrc ? (
+
+            <video
+              key={sentenceVideoSrc}
+              className="sentence-reference-video"
+              src={sentenceVideoSrc}
+              controls
+              autoPlay
+              muted
+              playsInline
+              preload="auto"
+              onEnded={() => {
+
+                const nextIndex =
+                  sentenceWordIndex + 1
+
+                if (
+                  nextIndex <
+                  (activeSentence.videoWords || []).length
+                ) {
+                  setSentenceWordIndex(nextIndex)
+                } else {
+                  setSentencePlaying(false)
+                }
+
+              }}
+              onError={() => {
+
+                console.error(
+                  'Sentence reference video failed:',
+                  sentenceVideoSrc
+                )
+
+                // Never show an "unavailable" video panel.
+                // Move to the next actual playable sign.
+                const nextIndex =
+                  sentenceWordIndex + 1
+
+                if (
+                  nextIndex <
+                  (activeSentence.videoWords || []).length
+                ) {
+                  setSentenceWordIndex(nextIndex)
+                } else {
+                  setSentencePlaying(false)
+                }
+
+              }}
+            />
+
+          ) : (
+
+            <div className="sentence-video-empty">
+              No playable sign video for this sentence.
             </div>
 
-          </div>
+          )}
+
+        </div>
+
+
+        {/* CURRENT PLAYABLE WORD */}
+
+        <div className="current-sentence-word">
+
+          <span className="current-label">
+            SIGN
+          </span>
+
+          <h2>
+            {activeSentenceWord?.word || ''}
+          </h2>
+
+        </div>
+
+      </div>
+
+
+      {/* CONTROLS */}
+
+      <div className="sentence-navigation">
+
+        <button
+          className="sentence-nav-button"
+          disabled={sentenceWordIndex === 0}
+          onClick={() => {
+            setSentenceWordIndex(
+              Math.max(
+                0,
+                sentenceWordIndex - 1
+              )
+            )
+          }}
+        >
+          ← Previous
+        </button>
+
+
+        <span className="sentence-progress">
+
+          {(activeSentence.videoWords || []).length
+            ? sentenceWordIndex + 1
+            : 0}
+
+          {' / '}
+
+          {(activeSentence.videoWords || []).length}
+
+        </span>
+
+
+        <button
+          className="sentence-nav-button"
+          disabled={
+            sentenceWordIndex >=
+            (activeSentence.videoWords || []).length - 1
+          }
+          onClick={() => {
+            setSentenceWordIndex(
+              Math.min(
+                (activeSentence.videoWords || []).length - 1,
+                sentenceWordIndex + 1
+              )
+            )
+          }}
+        >
+          Next →
 
         </button>
 
-      ))}
-
-    </div>
-
-
-    {playableSentences.length === 0 && (
-
-      <div className="empty-sentences bracket">
-
-        <div className="empty-icon">
-          💬
-        </div>
-
-        <h3>No sentences available yet</h3>
-
-        <p>
-          Add sentences using words that have
-          reference videos in your SignFrame data.
-        </p>
-
       </div>
 
-    )}
-
-  </section>
-)}
+    </section>
+  )}
       {/* =========================================
           ALPHABET PRACTICE
       ========================================== */}
@@ -1184,7 +1439,7 @@ export default function Practice() {
 
                   <div className="grid-lines"></div>
 
-                  <HandTrackingCamera ref={cameraRef} />
+                  <HandTrackingCamera />
 
                 </div>
 
@@ -1469,7 +1724,7 @@ export default function Practice() {
 
                 <div className="practice-camera-frame">
 
-                  <HandTrackingCamera ref={cameraRef} />
+                  <HandTrackingCamera />
 
                 </div>
 

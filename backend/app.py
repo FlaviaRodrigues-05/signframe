@@ -1,29 +1,189 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 import tensorflow as tf
 import numpy as np
-from PIL import Image
 
+from PIL import Image
 import io
 import os
-import json
-import base64
 import requests
 
+# ============================================================
+# APP SETUP
+# ============================================================
 
 app = Flask(__name__)
 CORS(app)
 
 
 # ============================================================
-# HUGGING FACE
+# MODEL PATH
 # ============================================================
 
-HF_DATASET = (
-    "https://huggingface.co/datasets/"
-    "chris0202/wlasl100-signframe"
+BASE_DIR = os.path.dirname(
+    os.path.dirname(
+        os.path.abspath(__file__)
+    )
 )
+
+MODEL_PATH = os.path.join(
+    BASE_DIR,
+    "GRU_for_signframe",
+    "signframe_gru_best.keras"
+)
+
+
+# ============================================================
+# LOAD GRU MODEL
+# ============================================================
+
+print("Loading GRU model...")
+
+model = tf.keras.models.load_model(
+    MODEL_PATH
+)
+
+print("GRU model loaded successfully!")
+
+
+# ============================================================
+# LOAD MOBILENETV2
+# ============================================================
+
+print("Loading MobileNetV2...")
+
+feature_extractor = tf.keras.applications.MobileNetV2(
+    weights="imagenet",
+    include_top=False,
+    pooling="avg"
+)
+
+feature_extractor.trainable = False
+
+print("MobileNetV2 loaded successfully!")
+
+
+# ============================================================
+# WLASL 100 CLASSES
+# ============================================================
+
+CLASS_NAMES = [
+    "accident",
+    "africa",
+    "all",
+    "apple",
+    "basketball",
+    "bed",
+    "before",
+    "bird",
+    "birthday",
+    "black",
+    "blue",
+    "book",
+    "bowling",
+    "brown",
+    "but",
+    "can",
+    "candy",
+    "chair",
+    "change",
+    "cheat",
+    "city",
+    "clothes",
+    "color",
+    "computer",
+    "cook",
+    "cool",
+    "corn",
+    "cousin",
+    "cow",
+    "dance",
+    "dark",
+    "deaf",
+    "decide",
+    "doctor",
+    "dog",
+    "drink",
+    "eat",
+    "enjoy",
+    "family",
+    "fine",
+    "finish",
+    "fish",
+    "forget",
+    "full",
+    "give",
+    "go",
+    "graduate",
+    "hat",
+    "hearing",
+    "help",
+    "hot",
+    "how",
+    "jacket",
+    "kiss",
+    "language",
+    "last",
+    "later",
+    "letter",
+    "like",
+    "man",
+    "many",
+    "medicine",
+    "meet",
+    "mother",
+    "need",
+    "no",
+    "now",
+    "orange",
+    "paint",
+    "paper",
+    "pink",
+    "pizza",
+    "play",
+    "pull",
+    "purple",
+    "right",
+    "same",
+    "school",
+    "secretary",
+    "shirt",
+    "short",
+    "son",
+    "study",
+    "table",
+    "tall",
+    "tell",
+    "thanksgiving",
+    "thin",
+    "thursday",
+    "time",
+    "walk",
+    "want",
+    "what",
+    "white",
+    "who",
+    "woman",
+    "work",
+    "wrong",
+    "year",
+    "yes"
+]
+
+
+# ============================================================
+# HOME / HEALTH CHECK
+# ============================================================
+
+@app.route("/", methods=["GET"])
+def home():
+
+    return jsonify({
+        "status": "SignFrame backend running",
+        "model": "MobileNetV2 + GRU",
+        "classes": len(CLASS_NAMES)
+    })
 
 HF_RESOLVE = (
     "https://huggingface.co/datasets/"
@@ -45,6 +205,7 @@ def get_wlasl_words():
     )
 
     try:
+
         response = requests.get(
             api_url,
             timeout=60,
@@ -53,67 +214,109 @@ def get_wlasl_words():
             }
         )
 
-        print("WLASL API status:", response.status_code)
+        print(
+            "WLASL API status:",
+            response.status_code
+        )
 
         if response.status_code != 200:
+
             return jsonify({
                 "error": "Could not load WLASL dataset",
                 "status": response.status_code
             }), response.status_code
 
+
         items = response.json()
 
         words_by_folder = {}
 
+
         for item in items:
 
-            path = item.get("path", "").strip("/")
+            path = item.get(
+                "path",
+                ""
+            ).strip("/")
+
 
             if not path.lower().endswith(".mp4"):
                 continue
 
+
             parts = path.split("/")
+
 
             if len(parts) < 2:
                 continue
 
+
             folder = parts[-2].strip()
             filename = parts[-1]
+
 
             if not folder:
                 continue
 
+
             if folder.lower() == "all":
                 continue
 
+
             key = folder.lower()
+
 
             if key not in words_by_folder:
 
                 words_by_folder[key] = {
+
                     "file": filename,
+
                     "folder": folder,
+
                     "source": "wlasl",
+
                     "word": folder
+
                 }
 
-        words = list(words_by_folder.values())
 
-        words.sort(
-            key=lambda item: item["word"].lower()
+        words = list(
+            words_by_folder.values()
         )
 
-        print("WLASL words loaded:", len(words))
+
+        words.sort(
+            key=lambda item:
+            item["word"].lower()
+        )
+
+
+        print(
+            "WLASL words loaded:",
+            len(words)
+        )
+
 
         return jsonify(words)
 
+
     except requests.RequestException as error:
 
-        print("WLASL API error:", error)
+        print(
+            "WLASL API error:",
+            error
+        )
+
 
         return jsonify({
-            "error": "Could not connect to Hugging Face",
-            "details": str(error)
+
+            "error":
+                "Could not connect to Hugging Face",
+
+            "details":
+                str(error)
+
         }), 502
 
 
@@ -144,17 +347,17 @@ def wlasl_video(video_path):
 
     try:
 
+        # Forward browser Range request to Hugging Face
         headers = {}
 
-        # Forward browser range request
         if request.headers.get("Range"):
             headers["Range"] = request.headers["Range"]
 
         response = requests.get(
             hf_url,
+            headers=headers,
             stream=True,
             timeout=60,
-            headers=headers,
             allow_redirects=True
         )
 
@@ -163,8 +366,12 @@ def wlasl_video(video_path):
             response.status_code
         )
 
-        if response.status_code not in (200, 206):
+        print(
+            "Hugging Face content type:",
+            response.headers.get("Content-Type")
+        )
 
+        if response.status_code not in (200, 206):
             return jsonify({
                 "error": "Hugging Face video not found",
                 "status": response.status_code,
@@ -183,6 +390,7 @@ def wlasl_video(video_path):
                         yield chunk
 
             finally:
+
                 response.close()
 
         response_headers = {
@@ -190,12 +398,14 @@ def wlasl_video(video_path):
             "Cache-Control": "public, max-age=3600"
         }
 
-        for header in (
+        # Forward important video headers
+        for header in [
             "Content-Length",
             "Content-Range",
+            "Content-Type",
             "ETag",
             "Last-Modified"
-        ):
+        ]:
 
             value = response.headers.get(header)
 
@@ -205,11 +415,7 @@ def wlasl_video(video_path):
         return Response(
             generate(),
             status=response.status_code,
-            headers=response_headers,
-            content_type=response.headers.get(
-                "Content-Type",
-                "video/mp4"
-            )
+            headers=response_headers
         )
 
     except requests.RequestException as error:
@@ -223,347 +429,289 @@ def wlasl_video(video_path):
             "error": "Could not connect to Hugging Face",
             "details": str(error)
         }), 502
-
-
 # ============================================================
-# SHARED MOBILENETV2 FEATURE EXTRACTOR
-#
-# Built once at startup and reused by both the GRU word model
-# and the alphabet classifier below, instead of being rebuilt
-# on every single request.
-# ============================================================
-
-print("Loading shared MobileNetV2 feature extractor...")
-
-mobilenet_feature_extractor = tf.keras.applications.MobileNetV2(
-    weights="imagenet",
-    include_top=False,
-    pooling="avg"
-)
-
-print("Shared feature extractor loaded successfully!")
-
-
-# ============================================================
-# GRU MODEL (word-level, 16-frame sequences)
-# ============================================================
-
-MODEL_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "GRU_for_signframe",
-    "signframe_gru_best.keras"
-)
-
-print("Loading GRU model...")
-
-model = tf.keras.models.load_model(
-    MODEL_PATH
-)
-
-print("GRU model loaded successfully!")
-
-
-CLASS_NAMES = [
-    str(i)
-    for i in range(100)
-]
-
-
-# ============================================================
-# ALPHABET MODEL (single-frame, MobileNetV2 features + dense classifier)
-# ============================================================
-
-ALPHABET_MODEL_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "cnn_model_asl-alphabet_dataset",
-    "best_signframe_feature_classifier.keras"
-)
-
-
-
-print("Loading alphabet classifier...")
-
-alphabet_classifier = tf.keras.models.load_model(
-    ALPHABET_MODEL_PATH
-)
-
-    
-# ============================================================
-# ALPHABET CLASS NAMES
-# ============================================================
-
-# Load the exact class ordering saved during training.
-ALPHABET_CLASS_NAMES_PATH = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__),
-        "..",
-        "cnn_model_asl-alphabet_dataset",
-        "extracted_features",
-        "class_names.json"
-    )
-)
-
-with open(
-    ALPHABET_CLASS_NAMES_PATH,
-    "r",
-    encoding="utf-8"
-) as f:
-    ALPHABET_CLASS_NAMES = json.load(f)
-
-
-
-
-
-# ============================================================
-# HOME
-# ============================================================
-
-@app.route("/", methods=["GET"])
-def home():
-
-    return jsonify({
-        "status": "SignFrame backend running"
-    })
-
-
-# ============================================================
-# PREDICT (word-level, GRU model, 16 frames)
+# PREDICT
 # ============================================================
 
 @app.route("/predict", methods=["POST"])
 def predict():
 
+    # --------------------------------------------------------
+    # Check frames
+    # --------------------------------------------------------
+
     if "frames" not in request.files:
 
         return jsonify({
-            "error": "No frames received"
+            "success": False,
+            "error": "No frames received."
         }), 400
 
+
     files = request.files.getlist("frames")
+
+
+    # --------------------------------------------------------
+    # We need exactly 16 frames
+    # --------------------------------------------------------
 
     if len(files) != 16:
 
         return jsonify({
+            "success": False,
             "error": (
                 f"Expected 16 frames, "
-                f"received {len(files)}"
+                f"but received {len(files)}."
             )
         }), 400
 
-    frames = []
-
-    for file in files:
-
-        image = Image.open(
-            io.BytesIO(file.read())
-        ).convert("RGB")
-
-        image = image.resize((224, 224))
-
-        image = np.array(
-            image
-        ).astype("float32")
-
-        image = (
-            tf.keras.applications
-            .mobilenet_v2
-            .preprocess_input(image)
-        )
-
-        frames.append(image)
-
-    frames = np.array(frames)
-
-    features = mobilenet_feature_extractor.predict(
-        frames,
-        verbose=0
-    )
-
-    features = np.expand_dims(
-        features,
-        axis=0
-    )
-
-    prediction = model.predict(
-        features,
-        verbose=0
-    )
-
-    predicted_id = int(
-        np.argmax(prediction[0])
-    )
-
-    confidence = float(
-        np.max(prediction[0])
-    )
-
-    word = CLASS_NAMES[predicted_id]
-
-    return jsonify({
-        "word": word,
-        "class_id": predicted_id,
-        "confidence": confidence
-    })
-
-
-
-# ============================================================
-# PREDICT SIGN (single-frame alphabet check)
-# ============================================================
-
-@app.route("/predict-sign", methods=["POST"])
-def predict_sign():
-
-    data = request.get_json(silent=True)
-
-    if not data or "image" not in data:
-        return jsonify({
-            "error": "No image received"
-        }), 400
-
-    expected_label = data.get("expectedLabel")
-
-    if expected_label is not None:
-        expected_label = str(expected_label).strip().upper()
-
-        if expected_label.startswith("LETTER "):
-            expected_label = expected_label.replace(
-                "LETTER ", "", 1
-            ).strip()
 
     try:
 
+        frames = []
+
+
         # ----------------------------------------------------
-        # 1. Decode the image received from React
+        # PROCESS EACH FRAME
         # ----------------------------------------------------
 
-        image_data = data["image"]
+        for file in files:
 
-        if not isinstance(image_data, str):
+            image = Image.open(
+                io.BytesIO(
+                    file.read()
+                )
+            ).convert("RGB")
+
+
+            image = image.resize(
+                (224, 224)
+            )
+
+
+            image = np.array(
+                image,
+                dtype=np.float32
+            )
+
+
+            # MobileNetV2 preprocessing
+            image = tf.keras.applications.mobilenet_v2.preprocess_input(
+                image
+            )
+
+
+            frames.append(image)
+
+
+        # ----------------------------------------------------
+        # Convert to NumPy
+        #
+        # (16, 224, 224, 3)
+        # ----------------------------------------------------
+
+        frames = np.array(frames)
+
+
+        print(
+            "Received frames:",
+            frames.shape
+        )
+
+
+        # ----------------------------------------------------
+        # MOBILENETV2 FEATURE EXTRACTION
+        #
+        # (16, 224, 224, 3)
+        #              ↓
+        # (16, 1280)
+        # ----------------------------------------------------
+
+        features = feature_extractor.predict(
+            frames,
+            verbose=0
+        )
+
+
+        print(
+            "Extracted features:",
+            features.shape
+        )
+
+
+        # ----------------------------------------------------
+        # CHECK FEATURE SHAPE
+        # ----------------------------------------------------
+
+        if features.shape != (16, 1280):
+
             return jsonify({
-                "error": "Image must be a base64 string"
-            }), 400
+                "success": False,
+                "error": (
+                    "Unexpected feature shape: "
+                    f"{features.shape}"
+                )
+            }), 500
 
-        img_b64 = image_data.split(",", 1)[-1]
-
-        image_bytes = base64.b64decode(
-            img_b64,
-            validate=True
-        )
-
-        image = Image.open(
-            io.BytesIO(image_bytes)
-        ).convert("RGB")
 
         # ----------------------------------------------------
-        # 2. Preprocess the image for MobileNetV2
+        # ADD BATCH DIMENSION
+        #
+        # (16, 1280)
+        #      ↓
+        # (1, 16, 1280)
         # ----------------------------------------------------
 
-        image = image.resize((224, 224))
-
-        image = np.array(
-            image,
-            dtype=np.float32
-        )
-
-        image = np.expand_dims(
-            image,
+        features = np.expand_dims(
+            features,
             axis=0
         )
 
-        image = (
-            tf.keras.applications
-            .mobilenet_v2
-            .preprocess_input(image)
+
+        print(
+            "GRU input shape:",
+            features.shape
         )
 
-        # ----------------------------------------------------
-        # 3. Extract MobileNetV2 features
-        # ----------------------------------------------------
-
-        features = mobilenet_feature_extractor.predict(
-            image,
-            verbose=0
-        )
 
         # ----------------------------------------------------
-        # 4. Predict the alphabet class
+        # GRU PREDICTION
         # ----------------------------------------------------
 
-        prediction = alphabet_classifier.predict(
+        prediction = model.predict(
             features,
             verbose=0
-        )[0]
+        )
 
-        if prediction.ndim != 1:
-            raise ValueError(
-                f"Unexpected prediction shape: {prediction.shape}"
-            )
 
-        if len(prediction) != len(ALPHABET_CLASS_NAMES):
-            raise ValueError(
-                f"Prediction has {len(prediction)} outputs, "
-                f"but class mapping has "
-                f"{len(ALPHABET_CLASS_NAMES)} labels."
-            )
+        probabilities = prediction[0]
+
+
+        # ----------------------------------------------------
+        # TOP 5 PREDICTIONS
+        # ----------------------------------------------------
+
+        top_indices = np.argsort(
+            probabilities
+        )[::-1][:5]
+
+
+        top_predictions = []
+
+
+        for index in top_indices:
+
+            top_predictions.append({
+
+                "word": CLASS_NAMES[
+                    int(index)
+                ],
+
+                "class_id": int(index),
+
+                "confidence": round(
+                    float(
+                        probabilities[index]
+                    ),
+                    4
+                )
+
+            })
+
+
+        # ----------------------------------------------------
+        # BEST PREDICTION
+        # ----------------------------------------------------
 
         predicted_id = int(
-            np.argmax(prediction)
+            np.argmax(
+                probabilities
+            )
         )
+
 
         confidence = float(
-            prediction[predicted_id]
+            probabilities[
+                predicted_id
+            ]
         )
 
-        # ----------------------------------------------------
-        # 5. Map predicted ID to its correct label
-        # ----------------------------------------------------
 
-        predicted_label = str(
-            ALPHABET_CLASS_NAMES[predicted_id]
-        )
+        word = CLASS_NAMES[
+            predicted_id
+        ]
+
 
         # ----------------------------------------------------
-        # 6. Compare predicted sign with expected sign
+        # PRINT RESULT
         # ----------------------------------------------------
 
-        is_correct = (
-            expected_label is not None
-            and predicted_label.strip().upper()
-            == expected_label
-        )
+        print("")
+        print("==============================")
+        print("GRU PREDICTION")
+        print("==============================")
+
+
+        for item in top_predictions:
+
+            print(
+                f"{item['word']}: "
+                f"{item['confidence'] * 100:.2f}%"
+            )
+
+
+        print("==============================")
+        print("")
+
 
         # ----------------------------------------------------
-        # 7. Return result to React
+        # SEND RESULT TO REACT
         # ----------------------------------------------------
 
         return jsonify({
-            "predicted": predicted_label,
+
+            "success": True,
+
+            "word": word,
+
             "class_id": predicted_id,
-            "confidence": confidence,
-            "isCorrect": is_correct,
-            "score": round(confidence * 100)
+
+            "confidence": round(
+                confidence,
+                4
+            ),
+
+            "top_predictions": top_predictions
+
         })
 
-    except Exception as error:
 
-        print("Alphabet prediction error:", error)
+    except Exception as e:
+
+        print(
+            "Prediction error:",
+            str(e)
+        )
+
 
         return jsonify({
-            "error": "Could not process image",
-            "details": str(error)
+
+            "success": False,
+
+            "error": str(e)
+
         }), 500
 
+
 # ============================================================
-# START
+# RUN SERVER
 # ============================================================
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5001))
 
     app.run(
         host="0.0.0.0",
-        port=5001,
-        debug=True
+        port=port,
+        debug=False
     )
