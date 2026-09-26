@@ -281,11 +281,7 @@ ALPHABET_MODEL_PATH = os.path.join(
     "best_signframe_feature_classifier.keras"
 )
 
-ALPHABET_CLASSES_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "class_names.json"
-)
+
 
 print("Loading alphabet classifier...")
 
@@ -293,10 +289,31 @@ alphabet_classifier = tf.keras.models.load_model(
     ALPHABET_MODEL_PATH
 )
 
-with open(ALPHABET_CLASSES_PATH) as f:
+    
+# ============================================================
+# ALPHABET CLASS NAMES
+# ============================================================
+
+# Load the exact class ordering saved during training.
+ALPHABET_CLASS_NAMES_PATH = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "cnn_model_asl-alphabet_dataset",
+        "extracted_features",
+        "class_names.json"
+    )
+)
+
+with open(
+    ALPHABET_CLASS_NAMES_PATH,
+    "r",
+    encoding="utf-8"
+) as f:
     ALPHABET_CLASS_NAMES = json.load(f)
 
-print("Alphabet classifier loaded successfully!")
+
+
 
 
 # ============================================================
@@ -391,6 +408,7 @@ def predict():
     })
 
 
+
 # ============================================================
 # PREDICT SIGN (single-frame alphabet check)
 # ============================================================
@@ -398,7 +416,7 @@ def predict():
 @app.route("/predict-sign", methods=["POST"])
 def predict_sign():
 
-    data = request.get_json()
+    data = request.get_json(silent=True)
 
     if not data or "image" not in data:
         return jsonify({
@@ -407,43 +425,123 @@ def predict_sign():
 
     expected_label = data.get("expectedLabel")
 
+    if expected_label is not None:
+        expected_label = str(expected_label).strip().upper()
+
+        if expected_label.startswith("LETTER "):
+            expected_label = expected_label.replace(
+                "LETTER ", "", 1
+            ).strip()
+
     try:
-        img_b64 = data["image"].split(",")[-1]
+
+        # ----------------------------------------------------
+        # 1. Decode the image received from React
+        # ----------------------------------------------------
+
+        image_data = data["image"]
+
+        if not isinstance(image_data, str):
+            return jsonify({
+                "error": "Image must be a base64 string"
+            }), 400
+
+        img_b64 = image_data.split(",", 1)[-1]
+
+        image_bytes = base64.b64decode(
+            img_b64,
+            validate=True
+        )
 
         image = Image.open(
-            io.BytesIO(base64.b64decode(img_b64))
+            io.BytesIO(image_bytes)
         ).convert("RGB")
+
+        # ----------------------------------------------------
+        # 2. Preprocess the image for MobileNetV2
+        # ----------------------------------------------------
 
         image = image.resize((224, 224))
 
+        image = np.array(
+            image,
+            dtype=np.float32
+        )
+
         image = np.expand_dims(
-            np.array(image).astype("float32"),
+            image,
             axis=0
         )
 
-        image = tf.keras.applications.mobilenet_v2.preprocess_input(image)
+        image = (
+            tf.keras.applications
+            .mobilenet_v2
+            .preprocess_input(image)
+        )
+
+        # ----------------------------------------------------
+        # 3. Extract MobileNetV2 features
+        # ----------------------------------------------------
 
         features = mobilenet_feature_extractor.predict(
             image,
             verbose=0
         )
 
+        # ----------------------------------------------------
+        # 4. Predict the alphabet class
+        # ----------------------------------------------------
+
         prediction = alphabet_classifier.predict(
             features,
             verbose=0
         )[0]
 
-        predicted_id = int(np.argmax(prediction))
-        confidence = float(np.max(prediction))
-        predicted_label = ALPHABET_CLASS_NAMES[predicted_id]
+        if prediction.ndim != 1:
+            raise ValueError(
+                f"Unexpected prediction shape: {prediction.shape}"
+            )
+
+        if len(prediction) != len(ALPHABET_CLASS_NAMES):
+            raise ValueError(
+                f"Prediction has {len(prediction)} outputs, "
+                f"but class mapping has "
+                f"{len(ALPHABET_CLASS_NAMES)} labels."
+            )
+
+        predicted_id = int(
+            np.argmax(prediction)
+        )
+
+        confidence = float(
+            prediction[predicted_id]
+        )
+
+        # ----------------------------------------------------
+        # 5. Map predicted ID to its correct label
+        # ----------------------------------------------------
+
+        predicted_label = str(
+            ALPHABET_CLASS_NAMES[predicted_id]
+        )
+
+        # ----------------------------------------------------
+        # 6. Compare predicted sign with expected sign
+        # ----------------------------------------------------
 
         is_correct = (
             expected_label is not None
-            and predicted_label.upper() == str(expected_label).upper()
+            and predicted_label.strip().upper()
+            == expected_label
         )
+
+        # ----------------------------------------------------
+        # 7. Return result to React
+        # ----------------------------------------------------
 
         return jsonify({
             "predicted": predicted_label,
+            "class_id": predicted_id,
             "confidence": confidence,
             "isCorrect": is_correct,
             "score": round(confidence * 100)
@@ -457,7 +555,6 @@ def predict_sign():
             "error": "Could not process image",
             "details": str(error)
         }), 500
-
 
 # ============================================================
 # START

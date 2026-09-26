@@ -19,74 +19,128 @@ const HandTrackingCamera = forwardRef(function HandTrackingCamera(props, ref) {
     // Returns a base64 JPEG cropped tightly around the detected hand
     // (falls back to the full frame if no hand is currently tracked),
     // resized to 224x224 to match the alphabet model's training input.
-    captureFrame() {
-      const video = videoRef.current
-
-      if (!video || video.videoWidth === 0) {
-        return null
-      }
-
-      if (!captureCanvasRef.current) {
-        captureCanvasRef.current = document.createElement('canvas')
-      }
-
-      const canvas = captureCanvasRef.current
-      const landmarks = lastLandmarksRef.current
-
-      let sx = 0
-      let sy = 0
-      let sw = video.videoWidth
-      let sh = video.videoHeight
-
-      if (landmarks) {
-
-        const xs = landmarks.map(p => p.x * video.videoWidth)
-        const ys = landmarks.map(p => p.y * video.videoHeight)
-
+    
+      captureFrame() {
+        const video = videoRef.current
+      
+        if (
+          !video ||
+          video.videoWidth === 0 ||
+          video.videoHeight === 0
+        ) {
+          return null
+        }
+      
+        const landmarks = lastLandmarksRef.current
+      
+        // Reject the frame if no hand landmarks are available.
+        if (
+          !Array.isArray(landmarks) ||
+          landmarks.length < 21
+        ) {
+          console.log("No hand detected.")
+          return null
+        }
+      
+        // Validate landmark coordinates.
+        const validLandmarks = landmarks.every(
+          p =>
+            Number.isFinite(p.x) &&
+            Number.isFinite(p.y)
+        )
+      
+        if (!validLandmarks) {
+          console.log("Invalid hand landmarks.")
+          return null
+        }
+      
+        if (!captureCanvasRef.current) {
+          captureCanvasRef.current =
+            document.createElement("canvas")
+        }
+      
+        const canvas = captureCanvasRef.current
+        const width = video.videoWidth
+        const height = video.videoHeight
+      
+        const xs = landmarks.map(
+          p => p.x * width
+        )
+      
+        const ys = landmarks.map(
+          p => p.y * height
+        )
+      
         const minX = Math.min(...xs)
         const maxX = Math.max(...xs)
         const minY = Math.min(...ys)
         const maxY = Math.max(...ys)
-
-        // Pad the box so the crop isn't cut off right at the fingertips
+      
         const boxW = maxX - minX
         const boxH = maxY - minY
+      
+        // Reject invalid or effectively empty bounding boxes.
+        if (boxW <= 0 || boxH <= 0) {
+          return null
+        }
+      
         const padX = boxW * 0.4
         const padY = boxH * 0.4
-
-        // Force a square crop (closer to the training photos than a
-        // stretched rectangle) using the larger of width/height
-        const size = Math.max(boxW + padX * 2, boxH + padY * 2)
+      
+        // Keep the crop square.
+        const size = Math.min(
+          Math.max(
+            boxW + padX * 2,
+            boxH + padY * 2
+          ),
+          width,
+          height
+        )
+      
         const cx = (minX + maxX) / 2
         const cy = (minY + maxY) / 2
-
-        sx = Math.max(0, cx - size / 2)
-        sy = Math.max(0, cy - size / 2)
-        sw = Math.min(size, video.videoWidth - sx)
-        sh = Math.min(size, video.videoHeight - sy)
-
+      
+        // Clamp the square crop entirely inside the video.
+        const sx = Math.max(
+          0,
+          Math.min(cx - size / 2, width - size)
+        )
+      
+        const sy = Math.max(
+          0,
+          Math.min(cy - size / 2, height - size)
+        )
+      
+        canvas.width = 224
+        canvas.height = 224
+      
+        const ctx = canvas.getContext("2d")
+      
+        if (!ctx) {
+          return null
+        }
+      
+        // Match the mirrored camera preview.
+        ctx.translate(canvas.width, 0)
+        ctx.scale(-1, 1)
+      
+        ctx.drawImage(
+          video,
+          sx,
+          sy,
+          size,
+          size,
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        )
+      
+        return canvas.toDataURL(
+          "image/jpeg",
+          0.9
+        )
       }
-
-      canvas.width = 224
-      canvas.height = 224
-
-      const ctx = canvas.getContext('2d')
-
-      // Flip horizontally to match the mirrored preview the user sees
-      // (tracking-camera-video has transform: scaleX(-1) in CSS, but the
-      // raw video element itself is NOT flipped — so without this, the
-      // model sees a left-right-reversed hand).
-      ctx.translate(canvas.width, 0)
-      ctx.scale(-1, 1)
-
-      ctx.drawImage(
-        video,
-        sx, sy, sw, sh,
-        0, 0, canvas.width, canvas.height
-      )
-
-      return canvas.toDataURL('image/jpeg', 0.9)
-    }
   }))
 
   useEffect(() => {

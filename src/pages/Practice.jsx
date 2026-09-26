@@ -500,109 +500,121 @@ export default function Practice() {
    * frame classifier), so this still uses the placeholder scoring until
    * a dedicated model is wired up.
    */
-  function checkSign() {
-
-    if (checking) {
-      return
-    }
+  
+  async function checkSign() {
+    if (checking) return
 
     setChecking(true)
     setScore(null)
     setToast(null)
 
-    if (mode !== 'alphabet') {
+    try {
+      // CNN classifier is only used for ASL alphabet.
+      if (mode !== 'alphabet') {
+        setToast({
+          type: 'bad',
+          text: 'This sign-checking model supports alphabet signs only.'
+        })
+        return
+      }
 
-      setTimeout(() => {
+      // Normalize labels such as "Letter V" to "V".
+      const expectedLabel = activeLetter?.label
+        ?.replace(/^letter\s+/i, '')
+        .trim()
+        .toUpperCase()
 
-        const scoreValue =
-          Math.floor(
-            70 + Math.random() * 30
-          )
+      if (!expectedLabel) {
+        throw new Error('Could not determine the expected letter.')
+      }
 
-        setScore(scoreValue)
-        setChecking(false)
+      // Capture the current webcam frame.
+      const frame = cameraRef.current?.captureFrame()
 
-        if (scoreValue >= 75) {
 
-          setToast({
-            type: 'good',
-            text: 'Nice! Your sign looks good.'
+      if (frame) {
+        console.log("Frame prefix:", frame.slice(0, 50))
+        console.log("Frame length:", frame.length)
+      
+        const preview = new Image()
+      
+        preview.onload = () => {
+          console.log("Frame dimensions:", {
+            width: preview.naturalWidth,
+            height: preview.naturalHeight
           })
-
-        } else {
-
-          setToast({
-            type: 'bad',
-            text: 'Try again and match the reference.'
-          })
+        
 
         }
+      
+        preview.onerror = () => {
+          console.error("Captured frame is not a valid image")
+        }
+      
+        preview.src = frame
+      }
 
-      }, 700)
+      if (!frame) {
+        setChecking(false)
+            
+        setToast({
+          type: 'bad',
+          text: 'No hand detected. Show your hand clearly and try again.'
+        })
+      
+        return
+      }
 
-      return
-    }
+      const response = await fetch(
+        `${BACKEND_URL}/predict-sign`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            image: frame,
+            expectedLabel
+          })
+        }
+      )
 
-    const expectedLabel = activeLetter?.label
-    const frame = cameraRef.current?.captureFrame()
+      if (!response.ok) {
+        throw new Error(
+          `Prediction request failed: ${response.status}`
+        )
+      }
 
-    if (!frame) {
+      const result = await response.json()
 
-      setChecking(false)
+      if (
+        typeof result.isCorrect !== 'boolean' ||
+        typeof result.predicted !== 'string' ||
+        typeof result.score !== 'number'
+      ) {
+        throw new Error('Invalid prediction response from backend.')
+      }
+
+      setScore(result.score)
+
+      setToast({
+        type: result.isCorrect ? 'good' : 'bad',
+        text: result.isCorrect
+          ? `Nice! That looked like "${result.predicted}".`
+          : `That looked more like "${result.predicted}" — try again.`
+      })
+
+    } catch (error) {
+      console.error('Sign check failed:', error)
 
       setToast({
         type: 'bad',
-        text: 'Camera not ready yet — try again.'
+        text: 'Could not check your sign. Please try again.'
       })
 
-      return
+    } finally {
+      setChecking(false)
     }
-
-    fetch(`${BACKEND_URL}/predict-sign`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        image: frame,
-        expectedLabel
-      })
-    })
-      .then(response => {
-
-        if (!response.ok) {
-          throw new Error('Prediction request failed')
-        }
-
-        return response.json()
-
-      })
-      .then(result => {
-
-        setScore(result.score)
-
-        setToast({
-          type: result.isCorrect ? 'good' : 'bad',
-          text: result.isCorrect
-            ? `Nice! That looked like "${result.predicted}".`
-            : `That looked more like "${result.predicted}" — try again.`
-        })
-
-      })
-      .catch(error => {
-
-        console.error('Sign check failed:', error)
-
-        setToast({
-          type: 'bad',
-          text: 'Could not reach the sign-checking model.'
-        })
-
-      })
-      .finally(() => {
-
-        setChecking(false)
-
-      })
-
   }
 
 
