@@ -1,6 +1,15 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext.jsx'
 
 export default function Header({ minimal = false }) {
+  const { isLoggedIn, logout } = useAuth()
+  const navigate = useNavigate()
+
+  async function handleLogout(){
+    await logout()
+    navigate('/')
+  }
+
   return (
     <header>
       <NavLink to="/" className="logo" style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -19,9 +28,13 @@ export default function Header({ minimal = false }) {
           <div className="lang-toggle">
             <button className="active">ASL</button>
           </div>
-          <NavLink to="/login" className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }}>
-            Sign up / Login
-          </NavLink>
+          {isLoggedIn ? (
+            <button className="btn btn-primary btn-sm" onClick={handleLogout}>Log out</button>
+          ) : (
+            <NavLink to="/login" className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }}>
+              Sign up / Login
+            </NavLink>
+          )}
         </div>
       )}
     </header>

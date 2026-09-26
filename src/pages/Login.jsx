@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { auth, googleProvider } from '../firebase' // adjust path to match your structure
+import { auth, googleProvider } from '../firebase'// adjust path to match your structure
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -90,9 +90,7 @@ export default function Login(){
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="eyebrow"><span className="diamond">◆</span>Account</div>
-        <h1>{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h1>
-        <p className="auth-sub">
+                <p className="auth-sub">
           {mode === 'signin'
             ? 'Sign in to continue your sign language journey.'
             : 'Sign up to start learning, translating, and interpreting.'}

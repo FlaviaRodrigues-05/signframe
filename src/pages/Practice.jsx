@@ -716,7 +716,7 @@ export default function Practice() {
 
       {!started &&
         activeLesson === 'select' && (
-
+          <>
           <div className="modes">
 
             {/* ALPHABET */}
@@ -830,6 +830,69 @@ export default function Practice() {
 
           </div>
 
+          {/* LEARNING PROGRESS — UI only, static values for now */}
+          <div
+            className="practice-progress bracket"
+            style={{
+              marginTop: '24px',
+              padding: '24px 28px'
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-end',
+                gap: '20px',
+                marginBottom: '14px'
+              }}
+            >
+              <div>
+                <div
+                  className="eyebrow"
+                  style={{ marginBottom: '6px' }}
+                >
+                  Your Learning Progress
+                </div>
+
+                <div
+                  style={{
+                    fontSize: '14px',
+                    color: 'var(--ink-soft)'
+                  }}
+                >
+                  0 of 3 lessons completed
+                </div>
+              </div>
+
+              <strong
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '18px'
+                }}
+              >
+                0%
+              </strong>
+            </div>
+
+            <div
+              style={{
+                width: '100%',
+                height: '8px',
+                borderRadius: '999px',
+                background: 'var(--line)',
+                overflow: 'hidden'
+              }}
+            >
+              <div
+                style={{
+                  width: '0%',
+                  height: '100%'
+                }}
+              />
+            </div>
+          </div>
+          </>
         )}
 
 

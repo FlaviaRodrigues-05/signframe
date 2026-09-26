@@ -1,13 +1,20 @@
 import { NavLink } from 'react-router-dom'
 import HandSkeleton from '../components/HandSkeleton.jsx'
 import { useLang } from '../context/LangContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 
 export default function Home(){
   const { lang } = useLang()
+  const { isLoggedIn, username } = useAuth()
 
   return (
     <>
       <div className="hero">
+        {isLoggedIn && (
+          <div className="welcome-badge">
+            <span className="pill-tag">Welcome, {username} 👋</span>
+          </div>
+        )}
         <div className="hero-grid">
           <div>
             <div className="eyebrow"><span className="diamond">◆</span>Camera-based sign learning</div>
