@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import CameraView from '../components/CameraView.jsx'
 import { useLang } from '../context/LangContext.jsx'
+import HandTrackingCamera from '../components/HandTrackingCamera.jsx'
+
 
 const API_BASE='http://127.0.0.1:5000'
 
@@ -165,7 +167,7 @@ export default function Translate(){
           </div>
           <div className="vf-frame">
             <div className="grid-lines"></div>
-            <CameraView />
+            <HandTrackingCamera />
           </div>
           <div className="signback-status">{status}</div>
           <p className="signback-hint">Sign the highlighted word on camera, then confirm to move to the next one.</p>

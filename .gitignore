@@ -1,6 +1,7 @@
 node_modules/
 .venv/
 .env
+backend/__pycache__/
 cnn_model_asl-alphabet_dataset/extracted_features
 GRU_for_signframe/cnn_extracted_features
 GRU_for_signframe/.ipynb_checkpoints
