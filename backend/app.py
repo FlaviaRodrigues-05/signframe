@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 import io
 import os
-
+import requests
 
 # ============================================================
 # APP SETUP
@@ -185,7 +185,282 @@ def home():
         "classes": len(CLASS_NAMES)
     })
 
+HF_RESOLVE = (
+    "https://huggingface.co/datasets/"
+    "chris0202/wlasl100-signframe/resolve/main"
+)
 
+
+# ============================================================
+# GET WLASL WORDS
+# ============================================================
+
+@app.route("/wlasl/words", methods=["GET"])
+def get_wlasl_words():
+
+    api_url = (
+        "https://huggingface.co/api/datasets/"
+        "chris0202/wlasl100-signframe/tree/main"
+        "?recursive=true&expand=false"
+    )
+
+    try:
+
+        response = requests.get(
+            api_url,
+            timeout=60,
+            headers={
+                "Accept": "application/json"
+            }
+        )
+
+        print(
+            "WLASL API status:",
+            response.status_code
+        )
+
+        if response.status_code != 200:
+
+            return jsonify({
+                "error": "Could not load WLASL dataset",
+                "status": response.status_code
+            }), response.status_code
+
+
+        items = response.json()
+
+        words_by_folder = {}
+
+
+        for item in items:
+
+            path = item.get(
+                "path",
+                ""
+            ).strip("/")
+
+
+            if not path.lower().endswith(".mp4"):
+                continue
+
+
+            parts = path.split("/")
+
+
+            if len(parts) < 2:
+                continue
+
+
+            folder = parts[-2].strip()
+            filename = parts[-1]
+
+
+            if not folder:
+                continue
+
+
+            if folder.lower() == "all":
+                continue
+
+
+            key = folder.lower()
+
+
+            if key not in words_by_folder:
+
+                words_by_folder[key] = {
+
+                    "file": filename,
+
+                    "folder": folder,
+
+                    "source": "wlasl",
+
+                    "word": folder
+
+                }
+
+
+        words = list(
+            words_by_folder.values()
+        )
+
+
+        words.sort(
+            key=lambda item:
+            item["word"].lower()
+        )
+
+
+        print(
+            "WLASL words loaded:",
+            len(words)
+        )
+
+
+        return jsonify(words)
+
+
+    except requests.RequestException as error:
+
+        print(
+            "WLASL API error:",
+            error
+        )
+
+
+        return jsonify({
+
+            "error":
+                "Could not connect to Hugging Face",
+
+            "details":
+                str(error)
+
+        }), 502
+
+
+# ============================================================
+# WLASL VIDEO PROXY
+# ============================================================
+
+@app.route(
+    "/wlasl/<path:video_path>",
+    methods=["GET"]
+)
+def wlasl_video(video_path):
+
+    if ".." in video_path:
+
+        return jsonify({
+            "error": "Invalid video path"
+        }), 400
+
+
+    if not video_path.lower().endswith(".mp4"):
+
+        return jsonify({
+            "error": "Complete MP4 path required"
+        }), 400
+
+
+    hf_url = (
+        f"{HF_RESOLVE}/{video_path}"
+    )
+
+
+    print()
+    print(
+        "Fetching WLASL video:"
+    )
+    print(hf_url)
+    print()
+
+
+    try:
+
+        headers = {}
+
+
+        # Forward browser range request
+        if request.headers.get("Range"):
+
+            headers["Range"] = (
+                request.headers["Range"]
+            )
+
+
+        response = requests.get(
+            hf_url,
+            stream=True,
+            timeout=60,
+            headers=headers
+        )
+
+
+        if response.status_code not in (
+            200,
+            206
+        ):
+
+            return jsonify({
+
+                "error":
+                    "Could not fetch WLASL video",
+
+                "status":
+                    response.status_code
+
+            }), response.status_code
+
+
+        content_type = (
+            response.headers.get(
+                "Content-Type",
+                "video/mp4"
+            )
+        )
+
+
+        response_headers = {
+
+            "Content-Type":
+                content_type,
+
+            "Accept-Ranges":
+                "bytes"
+
+        }
+
+
+        if response.headers.get(
+            "Content-Length"
+        ):
+
+            response_headers[
+                "Content-Length"
+            ] = response.headers[
+                "Content-Length"
+            ]
+
+
+        if response.headers.get(
+            "Content-Range"
+        ):
+
+            response_headers[
+                "Content-Range"
+            ] = response.headers[
+                "Content-Range"
+            ]
+
+
+        return Response(
+            response.iter_content(
+                chunk_size=1024 * 64
+            ),
+            status=response.status_code,
+            headers=response_headers
+        )
+
+
+    except requests.RequestException as error:
+
+        print(
+            "WLASL video error:",
+            error
+        )
+
+
+        return jsonify({
+
+            "error":
+                "Could not fetch WLASL video",
+
+            "details":
+                str(error)
+
+        }), 502
 # ============================================================
 # PREDICT
 # ============================================================
