@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { createHandLandmarker } from '../services/handLandmarker'
 
-export default function HandTrackingCamera() {
+const HandTrackingCamera = forwardRef(function HandTrackingCamera(props, ref) {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
+  const captureCanvasRef = useRef(null)
+  const lastLandmarksRef = useRef(null)
 
   const streamRef = useRef(null)
   const handLandmarkerRef = useRef(null)
@@ -12,6 +14,80 @@ export default function HandTrackingCamera() {
 
   const [status, setStatus] = useState('starting')
   const [errorMessage, setErrorMessage] = useState('')
+
+  useImperativeHandle(ref, () => ({
+    // Returns a base64 JPEG cropped tightly around the detected hand
+    // (falls back to the full frame if no hand is currently tracked),
+    // resized to 224x224 to match the alphabet model's training input.
+    captureFrame() {
+      const video = videoRef.current
+
+      if (!video || video.videoWidth === 0) {
+        return null
+      }
+
+      if (!captureCanvasRef.current) {
+        captureCanvasRef.current = document.createElement('canvas')
+      }
+
+      const canvas = captureCanvasRef.current
+      const landmarks = lastLandmarksRef.current
+
+      let sx = 0
+      let sy = 0
+      let sw = video.videoWidth
+      let sh = video.videoHeight
+
+      if (landmarks) {
+
+        const xs = landmarks.map(p => p.x * video.videoWidth)
+        const ys = landmarks.map(p => p.y * video.videoHeight)
+
+        const minX = Math.min(...xs)
+        const maxX = Math.max(...xs)
+        const minY = Math.min(...ys)
+        const maxY = Math.max(...ys)
+
+        // Pad the box so the crop isn't cut off right at the fingertips
+        const boxW = maxX - minX
+        const boxH = maxY - minY
+        const padX = boxW * 0.4
+        const padY = boxH * 0.4
+
+        // Force a square crop (closer to the training photos than a
+        // stretched rectangle) using the larger of width/height
+        const size = Math.max(boxW + padX * 2, boxH + padY * 2)
+        const cx = (minX + maxX) / 2
+        const cy = (minY + maxY) / 2
+
+        sx = Math.max(0, cx - size / 2)
+        sy = Math.max(0, cy - size / 2)
+        sw = Math.min(size, video.videoWidth - sx)
+        sh = Math.min(size, video.videoHeight - sy)
+
+      }
+
+      canvas.width = 224
+      canvas.height = 224
+
+      const ctx = canvas.getContext('2d')
+
+      // Flip horizontally to match the mirrored preview the user sees
+      // (tracking-camera-video has transform: scaleX(-1) in CSS, but the
+      // raw video element itself is NOT flipped — so without this, the
+      // model sees a left-right-reversed hand).
+      ctx.translate(canvas.width, 0)
+      ctx.scale(-1, 1)
+
+      ctx.drawImage(
+        video,
+        sx, sy, sw, sh,
+        0, 0, canvas.width, canvas.height
+      )
+
+      return canvas.toDataURL('image/jpeg', 0.9)
+    }
+  }))
 
   useEffect(() => {
     let mounted = true
@@ -152,9 +228,13 @@ export default function HandTrackingCamera() {
           results.landmarks &&
           results.landmarks.length > 0
         ) {
+          lastLandmarksRef.current = results.landmarks[0]
+
           for (const landmarks of results.landmarks) {
             drawHand(ctx, landmarks)
           }
+        } else {
+          lastLandmarksRef.current = null
         }
       }
 
@@ -344,4 +424,7 @@ export default function HandTrackingCamera() {
 
     </div>
   )
-}
+})
+
+export default HandTrackingCamera
+

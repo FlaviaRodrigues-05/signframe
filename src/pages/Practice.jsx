@@ -130,6 +130,10 @@ export default function Practice() {
   const searchRef = useRef(null)
   const toggleRef = useRef(null)
 
+  // Ref to the currently mounted HandTrackingCamera instance so we can
+  // pull a raw still frame from it for the alphabet check.
+  const cameraRef = useRef(null)
+
   const activeLetter = letters[letterIndex]
   const activeWord = currentWord || words[wordIndex]
  
@@ -139,6 +143,8 @@ export default function Practice() {
    * Local videos DO NOT use this.
    *
    * WLASL videos DO use this.
+   *
+   * The alphabet check (/predict-sign) also uses this.
    */
   const BACKEND_URL = 'http://localhost:5001'
 
@@ -486,8 +492,13 @@ export default function Practice() {
   /*
    * CHECK SIGN
    *
-   * This is still the existing temporary scoring
-   * logic from your Practice page.
+   * Alphabet mode: captures a raw frame from the camera and sends it to
+   * the Flask /predict-sign endpoint, which runs it through the trained
+   * MobileNetV2 + dense classifier and returns a real prediction.
+   *
+   * Word/sentence mode: WLASL is a video/temporal model (not a single
+   * frame classifier), so this still uses the placeholder scoring until
+   * a dedicated model is wired up.
    */
   function checkSign() {
 
@@ -499,33 +510,98 @@ export default function Practice() {
     setScore(null)
     setToast(null)
 
-    setTimeout(() => {
+    if (mode !== 'alphabet') {
 
-      const scoreValue =
-        Math.floor(
-          70 + Math.random() * 30
-        )
+      setTimeout(() => {
 
-      setScore(scoreValue)
+        const scoreValue =
+          Math.floor(
+            70 + Math.random() * 30
+          )
+
+        setScore(scoreValue)
+        setChecking(false)
+
+        if (scoreValue >= 75) {
+
+          setToast({
+            type: 'good',
+            text: 'Nice! Your sign looks good.'
+          })
+
+        } else {
+
+          setToast({
+            type: 'bad',
+            text: 'Try again and match the reference.'
+          })
+
+        }
+
+      }, 700)
+
+      return
+    }
+
+    const expectedLabel = activeLetter?.label
+    const frame = cameraRef.current?.captureFrame()
+
+    if (!frame) {
+
       setChecking(false)
 
-      if (scoreValue >= 75) {
+      setToast({
+        type: 'bad',
+        text: 'Camera not ready yet — try again.'
+      })
+
+      return
+    }
+
+    fetch(`${BACKEND_URL}/predict-sign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image: frame,
+        expectedLabel
+      })
+    })
+      .then(response => {
+
+        if (!response.ok) {
+          throw new Error('Prediction request failed')
+        }
+
+        return response.json()
+
+      })
+      .then(result => {
+
+        setScore(result.score)
 
         setToast({
-          type: 'good',
-          text: 'Nice! Your sign looks good.'
+          type: result.isCorrect ? 'good' : 'bad',
+          text: result.isCorrect
+            ? `Nice! That looked like "${result.predicted}".`
+            : `That looked more like "${result.predicted}" — try again.`
         })
 
-      } else {
+      })
+      .catch(error => {
+
+        console.error('Sign check failed:', error)
 
         setToast({
           type: 'bad',
-          text: 'Try again and match the reference.'
+          text: 'Could not reach the sign-checking model.'
         })
 
-      }
+      })
+      .finally(() => {
 
-    }, 700)
+        setChecking(false)
+
+      })
 
   }
 
@@ -1033,7 +1109,7 @@ export default function Practice() {
 
                   <div className="grid-lines"></div>
 
-                  <HandTrackingCamera />
+                  <HandTrackingCamera ref={cameraRef} />
 
                 </div>
 
@@ -1318,7 +1394,7 @@ export default function Practice() {
 
                 <div className="practice-camera-frame">
 
-                  <HandTrackingCamera />
+                  <HandTrackingCamera ref={cameraRef} />
 
                 </div>
 

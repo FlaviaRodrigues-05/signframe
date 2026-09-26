@@ -7,6 +7,8 @@ from PIL import Image
 
 import io
 import os
+import json
+import base64
 import requests
 
 
@@ -224,7 +226,26 @@ def wlasl_video(video_path):
 
 
 # ============================================================
-# GRU MODEL
+# SHARED MOBILENETV2 FEATURE EXTRACTOR
+#
+# Built once at startup and reused by both the GRU word model
+# and the alphabet classifier below, instead of being rebuilt
+# on every single request.
+# ============================================================
+
+print("Loading shared MobileNetV2 feature extractor...")
+
+mobilenet_feature_extractor = tf.keras.applications.MobileNetV2(
+    weights="imagenet",
+    include_top=False,
+    pooling="avg"
+)
+
+print("Shared feature extractor loaded successfully!")
+
+
+# ============================================================
+# GRU MODEL (word-level, 16-frame sequences)
 # ============================================================
 
 MODEL_PATH = os.path.join(
@@ -250,6 +271,35 @@ CLASS_NAMES = [
 
 
 # ============================================================
+# ALPHABET MODEL (single-frame, MobileNetV2 features + dense classifier)
+# ============================================================
+
+ALPHABET_MODEL_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "cnn_model_asl-alphabet_dataset",
+    "best_signframe_feature_classifier.keras"
+)
+
+ALPHABET_CLASSES_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "class_names.json"
+)
+
+print("Loading alphabet classifier...")
+
+alphabet_classifier = tf.keras.models.load_model(
+    ALPHABET_MODEL_PATH
+)
+
+with open(ALPHABET_CLASSES_PATH) as f:
+    ALPHABET_CLASS_NAMES = json.load(f)
+
+print("Alphabet classifier loaded successfully!")
+
+
+# ============================================================
 # HOME
 # ============================================================
 
@@ -262,7 +312,7 @@ def home():
 
 
 # ============================================================
-# PREDICT
+# PREDICT (word-level, GRU model, 16 frames)
 # ============================================================
 
 @app.route("/predict", methods=["POST"])
@@ -309,15 +359,7 @@ def predict():
 
     frames = np.array(frames)
 
-    feature_extractor = (
-        tf.keras.applications.MobileNetV2(
-            weights="imagenet",
-            include_top=False,
-            pooling="avg"
-        )
-    )
-
-    features = feature_extractor.predict(
+    features = mobilenet_feature_extractor.predict(
         frames,
         verbose=0
     )
@@ -347,6 +389,74 @@ def predict():
         "class_id": predicted_id,
         "confidence": confidence
     })
+
+
+# ============================================================
+# PREDICT SIGN (single-frame alphabet check)
+# ============================================================
+
+@app.route("/predict-sign", methods=["POST"])
+def predict_sign():
+
+    data = request.get_json()
+
+    if not data or "image" not in data:
+        return jsonify({
+            "error": "No image received"
+        }), 400
+
+    expected_label = data.get("expectedLabel")
+
+    try:
+        img_b64 = data["image"].split(",")[-1]
+
+        image = Image.open(
+            io.BytesIO(base64.b64decode(img_b64))
+        ).convert("RGB")
+
+        image = image.resize((224, 224))
+
+        image = np.expand_dims(
+            np.array(image).astype("float32"),
+            axis=0
+        )
+
+        image = tf.keras.applications.mobilenet_v2.preprocess_input(image)
+
+        features = mobilenet_feature_extractor.predict(
+            image,
+            verbose=0
+        )
+
+        prediction = alphabet_classifier.predict(
+            features,
+            verbose=0
+        )[0]
+
+        predicted_id = int(np.argmax(prediction))
+        confidence = float(np.max(prediction))
+        predicted_label = ALPHABET_CLASS_NAMES[predicted_id]
+
+        is_correct = (
+            expected_label is not None
+            and predicted_label.upper() == str(expected_label).upper()
+        )
+
+        return jsonify({
+            "predicted": predicted_label,
+            "confidence": confidence,
+            "isCorrect": is_correct,
+            "score": round(confidence * 100)
+        })
+
+    except Exception as error:
+
+        print("Alphabet prediction error:", error)
+
+        return jsonify({
+            "error": "Could not process image",
+            "details": str(error)
+        }), 500
 
 
 # ============================================================
