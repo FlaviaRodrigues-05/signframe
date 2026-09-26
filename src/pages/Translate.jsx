@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import CameraView from '../components/CameraView.jsx'
 import { useLang } from '../context/LangContext.jsx'
 
+const API_BASE='http://127.0.0.1:5000'
+
 const HAND_EMOJI = ['🤟', '👋', '✋', '🖐️', '👌', '🤙', '✊', '☝️']
 
 function handFor(word, i){
@@ -13,12 +15,64 @@ export default function Translate(){
   const [text, setText] = useState('thank you for helping me')
   const [words, setWords] = useState([])
   const [signIndex, setSignIndex] = useState(0)
+  const [wlaslVideos, setWlaslVideos] = useState([])
+  const [videoError, setVideoError] = useState('')
 
   // Re-run translation whenever the language changes, keeping the same sentence
   useEffect(() => {
     translate(text)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang])
+
+  //load all the words in the sentence from the dataset (get_wlasl_words() in app.py)
+  useEffect(() => {
+  async function loadWlaslWords() {
+    try {
+      const response = await fetch(
+        `${API_BASE}/wlasl/words`
+      )
+
+      if (!response.ok) {
+        throw new Error('Could not load sign videos')
+      }
+
+        const data = await response.json()
+        setWlaslVideos(data)
+
+      } catch (error) {
+        console.error(error)
+        setVideoError('Could not load sign videos.')
+      }
+    }
+  
+    loadWlaslWords()
+  }, [])
+
+
+  //find the video for the current word
+  const currentWord = words[signIndex]
+
+  //remove punctuations or some signs and keep only the word
+  const normalizeWord = currentWord =>
+  currentWord
+    ?.toLowerCase()
+    .replace(/[^\p{L}\p{N}']/gu, '')
+
+  const currentVideo = wlaslVideos.find(
+    item =>
+      normalizeWord(item.word) ===
+      normalizeWord(currentWord)
+  )
+
+
+  //construct the video url using the folder and file returned from /wlasl/words
+  const videoUrl = currentVideo
+  ? `${API_BASE}/wlasl/${encodeURIComponent(
+      currentVideo.folder
+    )}/${encodeURIComponent(currentVideo.file)}`
+  : ''
+
+
 
   function translate(value){
     const t = (value ?? text).trim()
@@ -75,6 +129,28 @@ export default function Translate(){
                 {i < signIndex && <span className="tick">✓</span>}
               </div>
             ))}
+          </div>
+          <div className="reference-video">               //displays the video from the dataset
+          <div className="reference-video-header">
+            <span>REFERENCE SIGN</span>
+            <span>{currentWord || 'No word selected'}</span>
+          </div>
+
+          {videoError ? (
+            <p>{videoError}</p>
+          ) : !currentWord ? (
+            <p>Translate a sentence to begin.</p>
+          ) : !currentVideo ? (
+            <p>No sign video available for this word.</p>
+          ) : (
+            <video
+              key={videoUrl}
+              src={videoUrl}
+              controls
+              autoPlay
+              playsInline
+            />
+          )}
           </div>
           <div className="vf-caption" style={{ marginTop: '18px' }}>
             <span>Showing output in {lang}</span>
