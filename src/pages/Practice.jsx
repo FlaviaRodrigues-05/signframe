@@ -1199,22 +1199,25 @@ export default function Practice() {
               </strong>
             </div>
 
-            <div
-              style={{
-                width: '100%',
-                height: '8px',
-                borderRadius: '999px',
-                background: 'var(--line)',
-                overflow: 'hidden'
-              }}
-            >
-              <div
-                style={{
-                  width: `${progressPercentage}%`,
-                  height: '100%'
-                }}
-              />
-            </div>
+           <div
+  style={{
+    width: '100%',
+    height: '10px',
+    borderRadius: '999px',
+    background: '#e5e5e5',
+    overflow: 'hidden'
+  }}
+>
+  <div
+    style={{
+      width: `${progressPercentage}%`,
+      height: '100%',
+      borderRadius: '999px',
+      background: '#ff6b5f',
+      transition: 'width 0.4s ease'
+    }}
+  />
+</div>
           </div>
           </>
         )}
