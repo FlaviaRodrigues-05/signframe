@@ -7,6 +7,8 @@ import numpy as np
 from PIL import Image
 import io
 import os
+import json
+import base64
 import requests
 
 # ============================================================
@@ -14,7 +16,17 @@ import requests
 # ============================================================
 
 app = Flask(__name__)
-CORS(app)
+
+# Allow the deployed SignFrame frontend to call the Flask API.
+# flask-cors also handles the browser's OPTIONS preflight.
+CORS(
+    app,
+    resources={
+        r"/*": {
+            "origins": "*"
+        }
+    }
+)
 
 
 # ============================================================
@@ -62,6 +74,42 @@ feature_extractor = tf.keras.applications.MobileNetV2(
 feature_extractor.trainable = False
 
 print("MobileNetV2 loaded successfully!")
+
+
+# ============================================================
+# ALPHABET CLASSIFIER
+#
+# Restores the original single-frame ASL alphabet prediction
+# used by Practice.jsx -> /predict-sign.
+# ============================================================
+
+ALPHABET_MODEL_PATH = os.path.join(
+    BASE_DIR,
+    "cnn_model_asl-alphabet_dataset",
+    "best_signframe_feature_classifier.keras"
+)
+
+ALPHABET_CLASSES_PATH = os.path.join(
+    BASE_DIR,
+    "class_names.json"
+)
+
+print("Loading alphabet classifier...")
+print("Alphabet model path:", ALPHABET_MODEL_PATH)
+print("Alphabet classes path:", ALPHABET_CLASSES_PATH)
+
+alphabet_classifier = tf.keras.models.load_model(
+    ALPHABET_MODEL_PATH
+)
+
+with open(ALPHABET_CLASSES_PATH, "r", encoding="utf-8") as class_file:
+    ALPHABET_CLASS_NAMES = json.load(class_file)
+
+print(
+    "Alphabet classifier loaded successfully!",
+    "Classes:",
+    len(ALPHABET_CLASS_NAMES)
+)
 
 
 # ============================================================
@@ -181,8 +229,9 @@ def home():
 
     return jsonify({
         "status": "SignFrame backend running",
-        "model": "MobileNetV2 + GRU",
-        "classes": len(CLASS_NAMES)
+        "model": "MobileNetV2 + GRU + ASL alphabet classifier",
+        "gru_classes": len(CLASS_NAMES),
+        "alphabet_classes": len(ALPHABET_CLASS_NAMES)
     })
 
 HF_RESOLVE = (
@@ -429,6 +478,138 @@ def wlasl_video(video_path):
             "error": "Could not connect to Hugging Face",
             "details": str(error)
         }), 502
+# ============================================================
+# PREDICT SIGN
+#
+# Single-frame ASL alphabet prediction.
+# Practice.jsx sends:
+# {
+#   image: <data URL>,
+#   expectedLabel: "A"
+# }
+#
+# The model returns the predicted letter and its confidence
+# score. No artificial/random score is generated.
+# ============================================================
+
+@app.route("/predict-sign", methods=["POST"])
+def predict_sign():
+    data = request.get_json(silent=True)
+
+    if not data or "image" not in data:
+        return jsonify({
+            "success": False,
+            "error": "No image received."
+        }), 400
+
+    expected_label = data.get("expectedLabel")
+
+    try:
+        # Remove a possible data-URL prefix:
+        # data:image/jpeg;base64,...
+        image_data = data["image"].split(",", 1)[-1]
+
+        image_bytes = base64.b64decode(
+            image_data,
+            validate=True
+        )
+
+        image = Image.open(
+            io.BytesIO(image_bytes)
+        ).convert("RGB")
+
+        # The alphabet classifier was trained using the
+        # MobileNetV2 feature pipeline.
+        image = image.resize((224, 224))
+
+        image = np.array(
+            image,
+            dtype=np.float32
+        )
+
+        image = tf.keras.applications.mobilenet_v2.preprocess_input(
+            image
+        )
+
+        image = np.expand_dims(
+            image,
+            axis=0
+        )
+
+        # Extract the same 1280-dim MobileNetV2 features
+        # used by the alphabet classifier.
+        features = feature_extractor.predict(
+            image,
+            verbose=0
+        )
+
+        prediction = alphabet_classifier.predict(
+            features,
+            verbose=0
+        )[0]
+
+        predicted_id = int(
+            np.argmax(prediction)
+        )
+
+        confidence = float(
+            prediction[predicted_id]
+        )
+
+        if predicted_id >= len(ALPHABET_CLASS_NAMES):
+            raise ValueError(
+                "Alphabet model returned an invalid class index: "
+                f"{predicted_id}"
+            )
+
+        predicted_label = str(
+            ALPHABET_CLASS_NAMES[predicted_id]
+        )
+
+        # Compare the model prediction with the letter
+        # currently being practised.
+        is_correct = (
+            expected_label is not None
+            and predicted_label.strip().upper()
+            == str(expected_label).strip().upper()
+        )
+
+        score = round(
+            confidence * 100
+        )
+
+        print("")
+        print("==============================")
+        print("ALPHABET PREDICTION")
+        print("==============================")
+        print("Expected:", expected_label)
+        print("Predicted:", predicted_label)
+        print(f"Confidence: {confidence * 100:.2f}%")
+        print("Correct:", is_correct)
+        print("==============================")
+        print("")
+
+        return jsonify({
+            "success": True,
+            "predicted": predicted_label,
+            "confidence": round(confidence, 4),
+            "isCorrect": is_correct,
+            "score": score
+        })
+
+    except Exception as error:
+        print(
+            "Alphabet prediction error:",
+            str(error)
+        )
+
+        return jsonify({
+            "success": False,
+            "error": "Could not process image.",
+            "details": str(error)
+        }), 500
+
+
 # ============================================================
 # PREDICT
 # ============================================================

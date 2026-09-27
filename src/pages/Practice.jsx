@@ -2,6 +2,12 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { DATA } from '../data/signData.js'
 import { useLang } from '../context/LangContext.jsx'
 import HandTrackingCamera from '../components/HandTrackingCamera.jsx'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth } from '../firebase'
+import {
+  getUserProgress,
+  saveItemProgress
+} from '../utils/progressService'
 
 export default function Practice() {
 
@@ -35,13 +41,43 @@ export default function Practice() {
   const [checking, setChecking] = useState(false)
   const [toast, setToast] = useState(null)
 
+  const [user, setUser] = useState(null)
+  const [progress, setProgress] = useState(null)
+
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
 
   const searchRef = useRef(null)
   const toggleRef = useRef(null)
+  const cameraRef = useRef(null)
 
   const BACKEND_URL = 'https://signframe.onrender.com'
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, currentUser => {
+      setUser(currentUser)
+    })
+
+    return () => unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    if (!user) {
+      setProgress(null)
+      return
+    }
+
+    const loadProgress = async () => {
+      try {
+        const data = await getUserProgress(user.uid)
+        setProgress(data)
+      } catch (error) {
+        console.error('Failed to load progress:', error)
+      }
+    }
+
+    loadProgress()
+  }, [user])
 
 
   const words = useMemo(() => {
@@ -211,6 +247,22 @@ export default function Practice() {
     })
   }, [sentences, words])
 
+  // One overall progress bar across every item in every module.
+  const totalItems =
+    letters.length +
+    words.length +
+    playableSentences.length
+
+  const completedItems =
+    (progress?.alphabet?.completedItems?.length || 0) +
+    (progress?.words?.completedItems?.length || 0) +
+    (progress?.sentences?.completedItems?.length || 0)
+
+  const progressPercentage =
+    totalItems > 0
+      ? Math.round((completedItems / totalItems) * 100)
+      : 0
+
   const activeLetter = letters[letterIndex]
   const activeWord = currentWord || words[wordIndex]
   const activeSentence = playableSentences[sentenceIndex]
@@ -369,6 +421,75 @@ export default function Practice() {
     setChecking(false)
     setToast(null)
 
+  }
+
+
+  async function completeProgressItem(module, itemId, scoreValue) {
+    if (!user || !module || !itemId) {
+      return
+    }
+
+    try {
+      await saveItemProgress({
+        userId: user.uid,
+        module,
+        itemId,
+        score: scoreValue
+      })
+
+      setProgress(prev => {
+        const current = prev || {
+          alphabet: {
+            completedItems: [],
+            scores: {}
+          },
+          words: {
+            completedItems: []
+          },
+          sentences: {
+            completedItems: []
+          }
+        }
+
+        const moduleProgress = current[module] || {
+          completedItems: [],
+          scores: {}
+        }
+
+        const completed = [
+          ...(moduleProgress.completedItems || [])
+        ]
+
+        if (!completed.includes(itemId)) {
+          completed.push(itemId)
+        }
+
+        const updatedModule = {
+          ...moduleProgress,
+          completedItems: completed
+        }
+
+        if (typeof scoreValue === 'number') {
+          updatedModule.scores = {
+            ...(moduleProgress.scores || {}),
+            [itemId]: Math.max(
+              scoreValue,
+              moduleProgress.scores?.[itemId] || 0
+            )
+          }
+        }
+
+        return {
+          ...current,
+          [module]: updatedModule
+        }
+      })
+    } catch (error) {
+      console.error(
+        `Failed to save ${module} progress:`,
+        error
+      )
+    }
   }
 
 
@@ -534,10 +655,22 @@ export default function Practice() {
   /*
    * NEXT WORD
    */
-  function nextWord() {
+  async function nextWord() {
 
     if (!words.length) {
       return
+    }
+
+    const currentWordItem = words[wordIndex]
+    const currentWordId = currentWordItem?.word
+      ?.toLowerCase()
+      .trim()
+
+    if (currentWordId) {
+      await completeProgressItem(
+        'words',
+        currentWordId
+      )
     }
 
     if (wordIndex >= words.length - 1) {
@@ -566,44 +699,170 @@ export default function Practice() {
    * This is still the existing temporary scoring
    * logic from your Practice page.
    */
-  function checkSign() {
-
-    if (checking) {
-      return
-    }
+  
+  async function checkSign() {
+    if (checking) return
 
     setChecking(true)
     setScore(null)
     setToast(null)
 
-    setTimeout(() => {
+    let timeoutId = null
 
-      const scoreValue =
-        Math.floor(
-          70 + Math.random() * 30
-        )
-
-      setScore(scoreValue)
-      setChecking(false)
-
-      if (scoreValue >= 75) {
-
-        setToast({
-          type: 'good',
-          text: 'Nice! Your sign looks good.'
-        })
-
-      } else {
-
+    try {
+      if (mode !== 'alphabet') {
         setToast({
           type: 'bad',
-          text: 'Try again and match the reference.'
+          text: 'This sign-checking model supports alphabet signs only.'
         })
-
+        return
       }
 
-    }, 700)
+      const expectedLabel = activeLetter?.label
+        ?.replace(/^letter\s+/i, '')
+        .trim()
+        .toUpperCase()
 
+      if (!expectedLabel) {
+        throw new Error(
+          'Could not determine the expected letter.'
+        )
+      }
+
+      const frame = cameraRef.current?.captureFrame()
+
+      if (!frame) {
+        setToast({
+          type: 'bad',
+          text: 'No camera frame captured. Show your hand clearly and try again.'
+        })
+        return
+      }
+
+      console.log(
+        'Sending sign prediction request:',
+        `${BACKEND_URL}/predict-sign`
+      )
+
+      /*
+       * Render can take a little time to wake up.
+       * Give the backend up to 90 seconds before timing out.
+       */
+      const controller = new AbortController()
+
+      timeoutId = window.setTimeout(() => {
+        controller.abort()
+      }, 90000)
+
+      let response
+
+      try {
+        response = await fetch(
+          `${BACKEND_URL}/predict-sign`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              image: frame,
+              expectedLabel
+            }),
+            signal: controller.signal
+          }
+        )
+      } catch (networkError) {
+        if (networkError?.name === 'AbortError') {
+          throw new Error(
+            'The prediction server took too long to respond. Please try again.'
+          )
+        }
+
+        throw new Error(
+          `Could not reach the prediction server at ${BACKEND_URL}. ` +
+          'Make sure the Render backend is running.'
+        )
+      }
+
+      if (!response.ok) {
+        let errorDetails = ''
+
+        try {
+          const errorBody = await response.json()
+
+          errorDetails =
+            errorBody?.details ||
+            errorBody?.error ||
+            ''
+        } catch {
+          // Response was not JSON.
+        }
+
+        throw new Error(
+          `Prediction request failed (${response.status}). ` +
+          `${errorDetails}`
+        )
+      }
+
+      const result = await response.json()
+
+      console.log(
+        'Sign prediction result:',
+        result
+      )
+
+      if (
+        typeof result.isCorrect !== 'boolean' ||
+        typeof result.predicted !== 'string' ||
+        typeof result.score !== 'number'
+      ) {
+        throw new Error(
+          'Invalid prediction response from backend.'
+        )
+      }
+
+      setScore(result.score)
+
+      setToast({
+        type: result.isCorrect ? 'good' : 'bad',
+        text: result.isCorrect
+          ? `Nice! That looked like "${result.predicted}".`
+          : `That looked more like "${result.predicted}" — try again.`
+      })
+
+      /*
+       * Only a correct model prediction completes the
+       * alphabet item here. The Next button can separately
+       * save an item if that is the intended progress rule.
+       */
+      if (result.isCorrect) {
+        await completeProgressItem(
+          'alphabet',
+          expectedLabel,
+          result.score
+        )
+      }
+
+    } catch (error) {
+      console.error(
+        'Sign check failed:',
+        error
+      )
+
+      setToast({
+        type: 'bad',
+        text:
+          error?.message ||
+          'Could not check your sign. Please try again.'
+      })
+
+    } finally {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId)
+      }
+
+      setChecking(false)
+    }
   }
 
 
@@ -794,7 +1053,7 @@ export default function Practice() {
 
       {!started &&
         activeLesson === 'select' && (
-
+          <>
           <div className="modes">
 
             {/* ALPHABET */}
@@ -908,6 +1167,69 @@ export default function Practice() {
 
           </div>
 
+          {/* LEARNING PROGRESS — one overall bar for all modules */}
+          <div
+            className="practice-progress bracket"
+            style={{
+              marginTop: '24px',
+              padding: '24px 28px'
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-end',
+                gap: '20px',
+                marginBottom: '14px'
+              }}
+            >
+              <div>
+                <div
+                  className="eyebrow"
+                  style={{ marginBottom: '6px' }}
+                >
+                  Your Learning Progress
+                </div>
+
+                <div
+                  style={{
+                    fontSize: '14px',
+                    color: 'var(--ink-soft)'
+                  }}
+                >
+                  {completedItems} of {totalItems} items completed
+                </div>
+              </div>
+
+              <strong
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '18px'
+                }}
+              >
+                {progressPercentage}%
+              </strong>
+            </div>
+
+            <div
+              style={{
+                width: '100%',
+                height: '8px',
+                borderRadius: '999px',
+                background: 'var(--line)',
+                overflow: 'hidden'
+              }}
+            >
+              <div
+                style={{
+                  width: `${progressPercentage}%`,
+                  height: '100%'
+                }}
+              />
+            </div>
+          </div>
+          </>
         )}
 
 {/* =========================================
@@ -1169,6 +1491,10 @@ export default function Practice() {
                   setSentenceWordIndex(nextIndex)
                 } else {
                   setSentencePlaying(false)
+                  completeProgressItem(
+                    'sentences',
+                    `sentence_${sentenceIndex}`
+                  )
                 }
 
               }}
@@ -1191,6 +1517,10 @@ export default function Practice() {
                   setSentenceWordIndex(nextIndex)
                 } else {
                   setSentencePlaying(false)
+                  completeProgressItem(
+                    'sentences',
+                    `sentence_${sentenceIndex}`
+                  )
                 }
 
               }}
@@ -1363,7 +1693,7 @@ export default function Practice() {
 
                   <div className="grid-lines"></div>
 
-                  <HandTrackingCamera />
+                  <HandTrackingCamera ref={cameraRef} />
 
                 </div>
 
@@ -1648,7 +1978,7 @@ export default function Practice() {
 
                 <div className="practice-camera-frame">
 
-                  <HandTrackingCamera />
+                  <HandTrackingCamera ref={cameraRef} />
 
                 </div>
 

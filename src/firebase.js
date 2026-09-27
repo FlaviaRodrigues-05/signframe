@@ -1,5 +1,12 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider } from 'firebase/auth'
+import {
+  getAuth,
+  GoogleAuthProvider
+} from 'firebase/auth'
+import {
+  getFirestore
+} from 'firebase/firestore'
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyA0rOejO9Dvl4P4xGoGPzSx8uElbYwaNXs",
@@ -8,9 +15,21 @@ const firebaseConfig = {
   storageBucket: "signframe-7c704.firebasestorage.app",
   messagingSenderId: "149198075143",
   appId: "1:149198075143:web:dae9b7974dbf09c4bfc1a2"
-};
+}
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+
+const app = initializeApp(firebaseConfig)
+
+
+// Authentication
 export const auth = getAuth(app)
-export const googleProvider = new GoogleAuthProvider()
+
+
+// Google login
+export const googleProvider =
+  new GoogleAuthProvider()
+
+
+// Firestore
+export const db =
+  getFirestore(app)
