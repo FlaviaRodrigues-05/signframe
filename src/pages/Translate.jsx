@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
-import CameraView from '../components/CameraView.jsx'
 import { useLang } from '../context/LangContext.jsx'
 import HandTrackingCamera from '../components/HandTrackingCamera.jsx'
 
 
-const API_BASE='http://127.0.0.1:5000'
+const API_BASE='https://signframe.onrender.com'
 
 const HAND_EMOJI = ['🤟', '👋', '✋', '🖐️', '👌', '🤙', '✊', '☝️']
 
@@ -150,6 +149,7 @@ export default function Translate(){
               src={videoUrl}
               controls
               autoPlay
+              muted
               playsInline
             />
           )}

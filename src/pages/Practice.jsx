@@ -707,9 +707,14 @@ export default function Practice() {
     setScore(null)
     setToast(null)
 
+<<<<<<< HEAD
     let timeoutId = null
 
     try {
+=======
+    try {
+      // CNN classifier is only used for ASL alphabet.
+>>>>>>> 81f7ccb9a345b07f6eea11b20b7711586e85d0eb
       if (mode !== 'alphabet') {
         setToast({
           type: 'bad',
@@ -718,12 +723,17 @@ export default function Practice() {
         return
       }
 
+<<<<<<< HEAD
+=======
+      // Normalize labels such as "Letter V" to "V".
+>>>>>>> 81f7ccb9a345b07f6eea11b20b7711586e85d0eb
       const expectedLabel = activeLetter?.label
         ?.replace(/^letter\s+/i, '')
         .trim()
         .toUpperCase()
 
       if (!expectedLabel) {
+<<<<<<< HEAD
         throw new Error(
           'Could not determine the expected letter.'
         )
@@ -801,24 +811,90 @@ export default function Practice() {
         throw new Error(
           `Prediction request failed (${response.status}). ` +
           `${errorDetails}`
+=======
+        throw new Error('Could not determine the expected letter.')
+      }
+
+      // Capture the current webcam frame.
+      const frame = cameraRef.current?.captureFrame()
+
+
+      if (frame) {
+        console.log("Frame prefix:", frame.slice(0, 50))
+        console.log("Frame length:", frame.length)
+      
+        const preview = new Image()
+      
+        preview.onload = () => {
+          console.log("Frame dimensions:", {
+            width: preview.naturalWidth,
+            height: preview.naturalHeight
+          })
+        
+
+        }
+      
+        preview.onerror = () => {
+          console.error("Captured frame is not a valid image")
+        }
+      
+        preview.src = frame
+      }
+
+      if (!frame) {
+        setChecking(false)
+            
+        setToast({
+          type: 'bad',
+          text: 'No hand detected. Show your hand clearly and try again.'
+        })
+      
+        return
+      }
+
+      const response = await fetch(
+        `${BACKEND_URL}/predict-sign`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            image: frame,
+            expectedLabel
+          })
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(
+          `Prediction request failed: ${response.status}`
+>>>>>>> 81f7ccb9a345b07f6eea11b20b7711586e85d0eb
         )
       }
 
       const result = await response.json()
 
+<<<<<<< HEAD
       console.log(
         'Sign prediction result:',
         result
       )
 
+=======
+>>>>>>> 81f7ccb9a345b07f6eea11b20b7711586e85d0eb
       if (
         typeof result.isCorrect !== 'boolean' ||
         typeof result.predicted !== 'string' ||
         typeof result.score !== 'number'
       ) {
+<<<<<<< HEAD
         throw new Error(
           'Invalid prediction response from backend.'
         )
+=======
+        throw new Error('Invalid prediction response from backend.')
+>>>>>>> 81f7ccb9a345b07f6eea11b20b7711586e85d0eb
       }
 
       setScore(result.score)
@@ -830,6 +906,7 @@ export default function Practice() {
           : `That looked more like "${result.predicted}" — try again.`
       })
 
+<<<<<<< HEAD
       /*
        * Only a correct model prediction completes the
        * alphabet item here. The Next button can separately
@@ -861,6 +938,17 @@ export default function Practice() {
         window.clearTimeout(timeoutId)
       }
 
+=======
+    } catch (error) {
+      console.error('Sign check failed:', error)
+
+      setToast({
+        type: 'bad',
+        text: 'Could not check your sign. Please try again.'
+      })
+
+    } finally {
+>>>>>>> 81f7ccb9a345b07f6eea11b20b7711586e85d0eb
       setChecking(false)
     }
   }
