@@ -708,6 +708,12 @@ export default function Practice() {
    * Sends the current webcam frame to the deployed alphabet
    * classifier and displays the model's real confidence score.
    */
+  /*
+   * CHECK SIGN
+   *
+   * Sends one webcam frame to the real ASL alphabet model.
+   * The backend returns the predicted letter and real confidence.
+   */
   async function checkSign() {
     if (checking) return
 
@@ -721,7 +727,7 @@ export default function Practice() {
       if (mode !== 'alphabet') {
         setToast({
           type: 'bad',
-          text: 'This sign-checking model supports alphabet signs only.'
+          text: 'Sign checking is currently available for alphabet signs.'
         })
         return
       }
@@ -732,7 +738,9 @@ export default function Practice() {
         .toUpperCase()
 
       if (!expectedLabel) {
-        throw new Error('Could not determine the expected letter.')
+        throw new Error(
+          'Could not determine the expected letter.'
+        )
       }
 
       const frame = cameraRef.current?.captureFrame()
@@ -782,39 +790,44 @@ export default function Practice() {
 
         throw new Error(
           `Could not reach the prediction server at ${BACKEND_URL}. ` +
-          'Make sure the Render backend is running.'
+          'Check that the Render backend is running.'
+        )
+      }
+
+      let result = null
+
+      try {
+        result = await response.json()
+      } catch {
+        throw new Error(
+          `The prediction server returned an invalid response (${response.status}).`
         )
       }
 
       if (!response.ok) {
-        let errorDetails = ''
-
-        try {
-          const errorBody = await response.json()
-          errorDetails =
-            errorBody?.details ||
-            errorBody?.error ||
-            ''
-        } catch {
-          // The server response was not JSON.
-        }
-
         throw new Error(
-          `Prediction request failed (${response.status}). ${errorDetails}`
+          result?.details ||
+          result?.error ||
+          `Prediction request failed (${response.status}).`
         )
       }
 
-      const result = await response.json()
-
-      console.log('Sign prediction result:', result)
-
       if (
-        typeof result.isCorrect !== 'boolean' ||
-        typeof result.predicted !== 'string' ||
-        typeof result.score !== 'number'
+        result?.success !== true ||
+        typeof result?.isCorrect !== 'boolean' ||
+        typeof result?.predicted !== 'string' ||
+        typeof result?.score !== 'number'
       ) {
-        throw new Error('Invalid prediction response from backend.')
+        throw new Error(
+          result?.error ||
+          'Invalid prediction response from backend.'
+        )
       }
+
+      console.log(
+        'Sign prediction result:',
+        result
+      )
 
       setScore(result.score)
 
@@ -825,16 +838,11 @@ export default function Practice() {
           : `That looked more like "${result.predicted}" — try again.`
       })
 
-      if (result.isCorrect) {
-        await completeProgressItem(
-          'alphabet',
-          expectedLabel,
-          result.score
-        )
-      }
-
     } catch (error) {
-      console.error('Sign check failed:', error)
+      console.error(
+        'Sign check failed:',
+        error
+      )
 
       setToast({
         type: 'bad',
@@ -1199,7 +1207,7 @@ export default function Practice() {
               </strong>
             </div>
 
-           <div
+         <div
   style={{
     width: '100%',
     height: '10px',

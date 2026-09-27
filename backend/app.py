@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 
 import tensorflow as tf
@@ -16,24 +16,78 @@ import requests
 # ============================================================
 
 app = Flask(__name__)
-CORS(app)
+
+ALLOWED_ORIGINS = {
+    "https://signframe.vercel.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+}
+
+CORS(
+    app,
+    resources={
+        r"/*": {
+            "origins": list(ALLOWED_ORIGINS),
+            "methods": ["GET", "POST", "OPTIONS"],
+            "allow_headers": ["Content-Type"],
+        }
+    },
+)
+
+@app.after_request
+def add_cors_headers(response):
+    origin = request.headers.get("Origin")
+
+    if origin in ALLOWED_ORIGINS:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = (
+            "GET, POST, OPTIONS"
+        )
+        response.headers["Access-Control-Allow-Headers"] = (
+            "Content-Type"
+        )
+        response.headers["Vary"] = "Origin"
+
+    return response
+
 
 
 # ============================================================
 # MODEL PATH
 # ============================================================
 
-BASE_DIR = os.path.dirname(
-    os.path.dirname(
-        os.path.abspath(__file__)
-    )
-)
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_DIR = os.path.dirname(APP_DIR)
 
-MODEL_PATH = os.path.join(
-    BASE_DIR,
-    "GRU_for_signframe",
-    "signframe_gru_best.keras"
-)
+
+def find_asset(relative_paths):
+    """
+    Find model/data files whether they are next to app.py
+    or one directory above it.
+    """
+    candidates = []
+
+    for root in (APP_DIR, PARENT_DIR):
+        for relative_path in relative_paths:
+            candidates.append(
+                os.path.join(root, relative_path)
+            )
+
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
+
+    return candidates[0]
+
+
+MODEL_PATH = find_asset([
+    os.path.join(
+        "GRU_for_signframe",
+        "signframe_gru_best.keras"
+    )
+])
 
 
 # ============================================================
@@ -73,16 +127,20 @@ print("MobileNetV2 loaded successfully!")
 # used by Practice.jsx -> /predict-sign.
 # ============================================================
 
-ALPHABET_MODEL_PATH = os.path.join(
-    BASE_DIR,
-    "cnn_model_asl-alphabet_dataset",
-    "best_signframe_feature_classifier.keras"
-)
+ALPHABET_MODEL_PATH = find_asset([
+    os.path.join(
+        "cnn_model_asl-alphabet_dataset",
+        "best_signframe_feature_classifier.keras"
+    )
+])
 
-ALPHABET_CLASSES_PATH = os.path.join(
-    BASE_DIR,
-    "class_names.json"
-)
+ALPHABET_CLASSES_PATH = find_asset([
+    "class_names.json",
+    os.path.join(
+        "cnn_model_asl-alphabet_dataset",
+        "class_names.json"
+    )
+])
 
 print("Loading alphabet classifier...")
 print("Alphabet model path:", ALPHABET_MODEL_PATH)
@@ -100,8 +158,18 @@ alphabet_classifier = tf.keras.models.load_model(
 # standard ASL Alphabet dataset class order used by this classifier family.
 alphabet_class_names_candidates = [
     ALPHABET_CLASSES_PATH,
-    os.path.join(BASE_DIR, "cnn_model_asl-alphabet_dataset", "class_names.json"),
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "class_names.json"),
+    os.path.join(APP_DIR, "class_names.json"),
+    os.path.join(PARENT_DIR, "class_names.json"),
+    os.path.join(
+        APP_DIR,
+        "cnn_model_asl-alphabet_dataset",
+        "class_names.json"
+    ),
+    os.path.join(
+        PARENT_DIR,
+        "cnn_model_asl-alphabet_dataset",
+        "class_names.json"
+    ),
 ]
 
 ALPHABET_CLASS_NAMES = None
@@ -532,8 +600,17 @@ def wlasl_video(video_path):
 # score. No artificial/random score is generated.
 # ============================================================
 
-@app.route("/predict-sign", methods=["POST"])
+@app.route(
+    "/predict-sign",
+    methods=["POST", "OPTIONS"]
+)
 def predict_sign():
+
+    if request.method == "OPTIONS":
+        return jsonify({
+            "success": True
+        }), 200
+
     data = request.get_json(silent=True)
 
     if not data or "image" not in data:
@@ -545,9 +622,9 @@ def predict_sign():
     expected_label = data.get("expectedLabel")
 
     try:
-        # Remove a possible data-URL prefix:
-        # data:image/jpeg;base64,...
-        image_data = data["image"].split(",", 1)[-1]
+        image_data = str(
+            data["image"]
+        ).split(",", 1)[-1]
 
         image_bytes = base64.b64decode(
             image_data,
@@ -558,9 +635,9 @@ def predict_sign():
             io.BytesIO(image_bytes)
         ).convert("RGB")
 
-        # The alphabet classifier was trained using the
-        # MobileNetV2 feature pipeline.
-        image = image.resize((224, 224))
+        image = image.resize(
+            (224, 224)
+        )
 
         image = np.array(
             image,
@@ -576,8 +653,6 @@ def predict_sign():
             axis=0
         )
 
-        # Extract the same 1280-dim MobileNetV2 features
-        # used by the alphabet classifier.
         features = feature_extractor.predict(
             image,
             verbose=0
@@ -596,9 +671,11 @@ def predict_sign():
             prediction[predicted_id]
         )
 
-        if predicted_id >= len(ALPHABET_CLASS_NAMES):
+        if predicted_id >= len(
+            ALPHABET_CLASS_NAMES
+        ):
             raise ValueError(
-                "Alphabet model returned an invalid class index: "
+                "Alphabet model returned invalid class index: "
                 f"{predicted_id}"
             )
 
@@ -606,12 +683,19 @@ def predict_sign():
             ALPHABET_CLASS_NAMES[predicted_id]
         )
 
-        # Compare the model prediction with the letter
-        # currently being practised.
+        normalized_expected = (
+            str(expected_label).strip().upper()
+            if expected_label is not None
+            else None
+        )
+
+        normalized_predicted = (
+            predicted_label.strip().upper()
+        )
+
         is_correct = (
-            expected_label is not None
-            and predicted_label.strip().upper()
-            == str(expected_label).strip().upper()
+            normalized_expected is not None
+            and normalized_predicted == normalized_expected
         )
 
         score = round(
@@ -624,7 +708,9 @@ def predict_sign():
         print("==============================")
         print("Expected:", expected_label)
         print("Predicted:", predicted_label)
-        print(f"Confidence: {confidence * 100:.2f}%")
+        print(
+            f"Confidence: {confidence * 100:.2f}%"
+        )
         print("Correct:", is_correct)
         print("==============================")
         print("")
@@ -632,12 +718,16 @@ def predict_sign():
         return jsonify({
             "success": True,
             "predicted": predicted_label,
-            "confidence": round(confidence, 4),
+            "confidence": round(
+                confidence,
+                4
+            ),
             "isCorrect": is_correct,
             "score": score
         })
 
     except Exception as error:
+
         print(
             "Alphabet prediction error:",
             str(error)
