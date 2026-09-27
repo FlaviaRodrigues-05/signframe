@@ -576,29 +576,38 @@ export default function Practice() {
 
   /*
    * NEXT LETTER
+   *
+   * Completing an alphabet item is tied to pressing Next.
    */
-  function nextLetter() {
+  async function nextLetter() {
 
     if (!letters.length) {
       return
     }
 
-    if (letterIndex >= letters.length - 1) {
+    const currentLetter = letters[letterIndex]
+    const currentLetterId = currentLetter?.label
+      ?.replace(/^letter\s+/i, '')
+      .trim()
+      .toUpperCase()
 
+    if (currentLetterId) {
+      await completeProgressItem(
+        'alphabet',
+        currentLetterId
+      )
+    }
+
+    if (letterIndex >= letters.length - 1) {
       setToast({
         type: 'good',
         text: "You've completed the alphabet!"
       })
-
       return
     }
 
-    setLetterIndex(
-      index => index + 1
-    )
-
+    setLetterIndex(index => index + 1)
     resetPracticeState()
-
   }
 
 
@@ -696,10 +705,9 @@ export default function Practice() {
   /*
    * CHECK SIGN
    *
-   * This is still the existing temporary scoring
-   * logic from your Practice page.
+   * Sends the current webcam frame to the deployed alphabet
+   * classifier and displays the model's real confidence score.
    */
-  
   async function checkSign() {
     if (checking) return
 
@@ -707,14 +715,9 @@ export default function Practice() {
     setScore(null)
     setToast(null)
 
-<<<<<<< HEAD
     let timeoutId = null
 
     try {
-=======
-    try {
-      // CNN classifier is only used for ASL alphabet.
->>>>>>> 81f7ccb9a345b07f6eea11b20b7711586e85d0eb
       if (mode !== 'alphabet') {
         setToast({
           type: 'bad',
@@ -723,20 +726,13 @@ export default function Practice() {
         return
       }
 
-<<<<<<< HEAD
-=======
-      // Normalize labels such as "Letter V" to "V".
->>>>>>> 81f7ccb9a345b07f6eea11b20b7711586e85d0eb
       const expectedLabel = activeLetter?.label
         ?.replace(/^letter\s+/i, '')
         .trim()
         .toUpperCase()
 
       if (!expectedLabel) {
-<<<<<<< HEAD
-        throw new Error(
-          'Could not determine the expected letter.'
-        )
+        throw new Error('Could not determine the expected letter.')
       }
 
       const frame = cameraRef.current?.captureFrame()
@@ -754,10 +750,6 @@ export default function Practice() {
         `${BACKEND_URL}/predict-sign`
       )
 
-      /*
-       * Render can take a little time to wake up.
-       * Give the backend up to 90 seconds before timing out.
-       */
       const controller = new AbortController()
 
       timeoutId = window.setTimeout(() => {
@@ -799,102 +791,29 @@ export default function Practice() {
 
         try {
           const errorBody = await response.json()
-
           errorDetails =
             errorBody?.details ||
             errorBody?.error ||
             ''
         } catch {
-          // Response was not JSON.
+          // The server response was not JSON.
         }
 
         throw new Error(
-          `Prediction request failed (${response.status}). ` +
-          `${errorDetails}`
-=======
-        throw new Error('Could not determine the expected letter.')
-      }
-
-      // Capture the current webcam frame.
-      const frame = cameraRef.current?.captureFrame()
-
-
-      if (frame) {
-        console.log("Frame prefix:", frame.slice(0, 50))
-        console.log("Frame length:", frame.length)
-      
-        const preview = new Image()
-      
-        preview.onload = () => {
-          console.log("Frame dimensions:", {
-            width: preview.naturalWidth,
-            height: preview.naturalHeight
-          })
-        
-
-        }
-      
-        preview.onerror = () => {
-          console.error("Captured frame is not a valid image")
-        }
-      
-        preview.src = frame
-      }
-
-      if (!frame) {
-        setChecking(false)
-            
-        setToast({
-          type: 'bad',
-          text: 'No hand detected. Show your hand clearly and try again.'
-        })
-      
-        return
-      }
-
-      const response = await fetch(
-        `${BACKEND_URL}/predict-sign`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            image: frame,
-            expectedLabel
-          })
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error(
-          `Prediction request failed: ${response.status}`
->>>>>>> 81f7ccb9a345b07f6eea11b20b7711586e85d0eb
+          `Prediction request failed (${response.status}). ${errorDetails}`
         )
       }
 
       const result = await response.json()
 
-<<<<<<< HEAD
-      console.log(
-        'Sign prediction result:',
-        result
-      )
+      console.log('Sign prediction result:', result)
 
-=======
->>>>>>> 81f7ccb9a345b07f6eea11b20b7711586e85d0eb
       if (
         typeof result.isCorrect !== 'boolean' ||
         typeof result.predicted !== 'string' ||
         typeof result.score !== 'number'
       ) {
-<<<<<<< HEAD
-        throw new Error(
-          'Invalid prediction response from backend.'
-        )
-=======
         throw new Error('Invalid prediction response from backend.')
->>>>>>> 81f7ccb9a345b07f6eea11b20b7711586e85d0eb
       }
 
       setScore(result.score)
@@ -906,12 +825,6 @@ export default function Practice() {
           : `That looked more like "${result.predicted}" — try again.`
       })
 
-<<<<<<< HEAD
-      /*
-       * Only a correct model prediction completes the
-       * alphabet item here. The Next button can separately
-       * save an item if that is the intended progress rule.
-       */
       if (result.isCorrect) {
         await completeProgressItem(
           'alphabet',
@@ -921,10 +834,7 @@ export default function Practice() {
       }
 
     } catch (error) {
-      console.error(
-        'Sign check failed:',
-        error
-      )
+      console.error('Sign check failed:', error)
 
       setToast({
         type: 'bad',
@@ -938,17 +848,6 @@ export default function Practice() {
         window.clearTimeout(timeoutId)
       }
 
-=======
-    } catch (error) {
-      console.error('Sign check failed:', error)
-
-      setToast({
-        type: 'bad',
-        text: 'Could not check your sign. Please try again.'
-      })
-
-    } finally {
->>>>>>> 81f7ccb9a345b07f6eea11b20b7711586e85d0eb
       setChecking(false)
     }
   }

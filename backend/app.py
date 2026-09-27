@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 import tensorflow as tf
@@ -16,17 +16,7 @@ import requests
 # ============================================================
 
 app = Flask(__name__)
-
-# Allow the deployed SignFrame frontend to call the Flask API.
-# flask-cors also handles the browser's OPTIONS preflight.
-CORS(
-    app,
-    resources={
-        r"/*": {
-            "origins": "*"
-        }
-    }
-)
+CORS(app)
 
 
 # ============================================================
@@ -102,8 +92,58 @@ alphabet_classifier = tf.keras.models.load_model(
     ALPHABET_MODEL_PATH
 )
 
-with open(ALPHABET_CLASSES_PATH, "r", encoding="utf-8") as class_file:
-    ALPHABET_CLASS_NAMES = json.load(class_file)
+# Load the class names used by the alphabet classifier.
+#
+# Render deployments can place the app in /src while model assets may be
+# committed beside it or in a nested model directory. Try the common
+# locations first. If the JSON file is not committed, fall back to the
+# standard ASL Alphabet dataset class order used by this classifier family.
+alphabet_class_names_candidates = [
+    ALPHABET_CLASSES_PATH,
+    os.path.join(BASE_DIR, "cnn_model_asl-alphabet_dataset", "class_names.json"),
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "class_names.json"),
+]
+
+ALPHABET_CLASS_NAMES = None
+
+for class_names_path in alphabet_class_names_candidates:
+    if os.path.isfile(class_names_path):
+        with open(class_names_path, "r", encoding="utf-8") as class_file:
+            ALPHABET_CLASS_NAMES = json.load(class_file)
+
+        print(
+            "Loaded alphabet class names from:",
+            class_names_path
+        )
+        break
+
+if ALPHABET_CLASS_NAMES is None:
+    ALPHABET_CLASS_NAMES = [
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
+        "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
+        "U", "V", "W", "X", "Y", "Z",
+        "del", "nothing", "space"
+    ]
+
+    print(
+        "WARNING: class_names.json was not found."
+    )
+    print(
+        "Using standard ASL Alphabet class order:",
+        ALPHABET_CLASS_NAMES
+    )
+
+# Protect against a model/class-name mismatch.
+alphabet_output_count = int(
+    alphabet_classifier.output_shape[-1]
+)
+
+if alphabet_output_count != len(ALPHABET_CLASS_NAMES):
+    raise RuntimeError(
+        "Alphabet classifier output has "
+        f"{alphabet_output_count} classes, but "
+        f"{len(ALPHABET_CLASS_NAMES)} class names were loaded."
+    )
 
 print(
     "Alphabet classifier loaded successfully!",
