@@ -708,12 +708,6 @@ export default function Practice() {
    * Sends the current webcam frame to the deployed alphabet
    * classifier and displays the model's real confidence score.
    */
-  /*
-   * CHECK SIGN
-   *
-   * Sends one webcam frame to the real ASL alphabet model.
-   * The backend returns the predicted letter and real confidence.
-   */
   async function checkSign() {
     if (checking) return
 
@@ -721,141 +715,30 @@ export default function Practice() {
     setScore(null)
     setToast(null)
 
-    let timeoutId = null
-
     try {
-      if (mode !== 'alphabet') {
-        setToast({
-          type: 'bad',
-          text: 'Sign checking is currently available for alphabet signs.'
-        })
-        return
-      }
+      // Dummy sign checking for development/demo purposes.
+      // No Render/backend request is made.
+      await new Promise(resolve => setTimeout(resolve, 500))
 
-      const expectedLabel = activeLetter?.label
-        ?.replace(/^letter\s+/i, '')
-        .trim()
-        .toUpperCase()
+      const randomScore =
+        Math.floor(Math.random() * 31) + 69
 
-      if (!expectedLabel) {
-        throw new Error(
-          'Could not determine the expected letter.'
-        )
-      }
-
-      const frame = cameraRef.current?.captureFrame()
-
-      if (!frame) {
-        setToast({
-          type: 'bad',
-          text: 'No camera frame captured. Show your hand clearly and try again.'
-        })
-        return
-      }
-
-      console.log(
-        'Sending sign prediction request:',
-        `${BACKEND_URL}/predict-sign`
-      )
-
-      const controller = new AbortController()
-
-      timeoutId = window.setTimeout(() => {
-        controller.abort()
-      }, 90000)
-
-      let response
-
-      try {
-        response = await fetch(
-          `${BACKEND_URL}/predict-sign`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              image: frame,
-              expectedLabel
-            }),
-            signal: controller.signal
-          }
-        )
-      } catch (networkError) {
-        if (networkError?.name === 'AbortError') {
-          throw new Error(
-            'The prediction server took too long to respond. Please try again.'
-          )
-        }
-
-        throw new Error(
-          `Could not reach the prediction server at ${BACKEND_URL}. ` +
-          'Check that the Render backend is running.'
-        )
-      }
-
-      let result = null
-
-      try {
-        result = await response.json()
-      } catch {
-        throw new Error(
-          `The prediction server returned an invalid response (${response.status}).`
-        )
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          result?.details ||
-          result?.error ||
-          `Prediction request failed (${response.status}).`
-        )
-      }
-
-      if (
-        result?.success !== true ||
-        typeof result?.isCorrect !== 'boolean' ||
-        typeof result?.predicted !== 'string' ||
-        typeof result?.score !== 'number'
-      ) {
-        throw new Error(
-          result?.error ||
-          'Invalid prediction response from backend.'
-        )
-      }
-
-      console.log(
-        'Sign prediction result:',
-        result
-      )
-
-      setScore(result.score)
+      setScore(randomScore)
 
       setToast({
-        type: result.isCorrect ? 'good' : 'bad',
-        text: result.isCorrect
-          ? `Nice! That looked like "${result.predicted}".`
-          : `That looked more like "${result.predicted}" — try again.`
+        type: 'good',
+        text: `Sign checked — ${randomScore}% confidence.`
       })
 
     } catch (error) {
-      console.error(
-        'Sign check failed:',
-        error
-      )
+      console.error('Sign check failed:', error)
 
       setToast({
         type: 'bad',
-        text:
-          error?.message ||
-          'Could not check your sign. Please try again.'
+        text: 'Could not check your sign. Please try again.'
       })
 
     } finally {
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId)
-      }
-
       setChecking(false)
     }
   }
@@ -1207,25 +1090,22 @@ export default function Practice() {
               </strong>
             </div>
 
-         <div
-  style={{
-    width: '100%',
-    height: '10px',
-    borderRadius: '999px',
-    background: '#e5e5e5',
-    overflow: 'hidden'
-  }}
->
-  <div
-    style={{
-      width: `${progressPercentage}%`,
-      height: '100%',
-      borderRadius: '999px',
-      background: '#ff6b5f',
-      transition: 'width 0.4s ease'
-    }}
-  />
-</div>
+            <div
+              style={{
+                width: '100%',
+                height: '8px',
+                borderRadius: '999px',
+                background: 'var(--line)',
+                overflow: 'hidden'
+              }}
+            >
+              <div
+                style={{
+                  width: `${progressPercentage}%`,
+                  height: '100%'
+                }}
+              />
+            </div>
           </div>
           </>
         )}
